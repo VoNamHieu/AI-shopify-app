@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { TopTabBar } from "./TopTabBar";
+import { PRDScreen } from "./PRDScreen";
 
 // ============================================================================
 // DATA
@@ -12,6 +14,7 @@ const store = {
   monthlyTraffic: 84000,
   currentCR: 1.8,
   monthlyRevenue: 127000,
+  verticalBenchmarks: { median: 1.6, topQuartile: 2.4, topDecile: 2.9 },
 };
 
 type Thought = { at: number; text: string };
@@ -151,14 +154,20 @@ const audit = {
       "5/12 missing return policy on PDP",
     ],
     gaps: [
-      { name: "Ergonomic standing mat", segment: "$180-$220", signal: "+47% search YoY", projected: 78000 },
-      { name: "Monitor riser bundle", segment: "$120-$180", signal: "78% co-purchase rate", projected: 64000 },
-      { name: "Pro Chair XL (size variant)", segment: "$329-$359", signal: "12% inquiry volume unserved", projected: 44000 },
+      { name: "Ergonomic standing mat", segment: "$180-$220", signal: "+47% search YoY", projected: 50000 },
+      { name: "Monitor riser bundle", segment: "$120-$180", signal: "78% co-purchase rate", projected: 42000 },
+      { name: "Pro Chair XL (size variant)", segment: "$329-$359", signal: "12% inquiry volume unserved", projected: 28000 },
     ],
   },
   narrative:
-    "Market analysis places ErgoFlex in a middle-of-pack competitive position with no defensible differentiation against 12 indexed competitors. Three catalog gaps map directly to traffic currently flowing to competitors. The top-performing PDP misses 3 of 5 trust signals standard for furniture vertical. The highest-spend ad creative pulls audiences with a pain-relief promise that the hero never honors. And top-performing SKUs are buried below fold on the homepage.",
-  estimatedBlendedLift: { cr: 24.5, revenue: 560000 },
+    "ErgoFlex sits at the furniture vertical median (1.8% CR vs 1.6% median). Top quartile reaches 2.4%; furniture giants Wayfair/Overstock hit 2.9–3.1%. The proposed fix stack lifts the store from median toward top quartile — meaningful but bounded by vertical ceiling. Three catalog gaps map directly to competitor traffic. The top-performing PDP misses 3 of 5 trust signals standard for the vertical. The highest-spend ad creative pulls audiences with a pain-relief promise the hero never honors. Top-performing SKUs are buried below fold on the homepage.",
+  estimatedBlendedLift: {
+    crLiftRelative: 30,
+    crAbsoluteAfter: 2.33,
+    revenueLiftFromCR: 285000,
+    revenueLiftFromCatalog: 120000,
+    revenue: 405000,
+  },
 };
 
 type PRDCandidate = {
@@ -203,13 +212,13 @@ const issues: Issue[] = [
     reasoning:
       "Ad audience clicks expecting health framing. Hero pivots to luxury framing. Cognitive mismatch drives bounce. $18.5k/mo ad spend pulls 412k impressions; conservative 30% mismatch-bounce ≈ $5.5k wasted monthly.",
     impact: {
-      crLift: 8.4,
-      revenueLift: 144000,
+      crLift: 13,
+      revenueLift: 155000,
       confidence: "medium-high",
       breakdown: [
-        { source: "Message-match restoration", value: 5.2 },
-        { source: "Price anchor visibility", value: 2.1 },
-        { source: "Pain-point reinforcement", value: 1.1 },
+        { source: "Message-match restoration", value: 8.0 },
+        { source: "Price anchor visibility", value: 3.2 },
+        { source: "Pain-point reinforcement", value: 1.8 },
       ],
     },
     fix: {
@@ -247,13 +256,13 @@ const issues: Issue[] = [
     reasoning:
       "Market analysis identified 3 product gaps with strong demand signals and existing customer co-purchase patterns. Each gap maps to traffic currently flowing to competitors. Launching these SKUs creates net-new TAM plus cross-sell paths on existing traffic.",
     impact: {
-      crLift: 5.8,
-      revenueLift: 186000,
+      crLift: 3,
+      revenueLift: 120000,
       confidence: "medium-high",
       breakdown: [
-        { source: "Captured search demand", value: 2.6 },
-        { source: "Cross-sell on existing traffic", value: 2.2 },
-        { source: "AOV lift from bundling", value: 1.0 },
+        { source: "Captured search demand", value: 1.3 },
+        { source: "Cross-sell on existing traffic", value: 1.1 },
+        { source: "AOV lift from bundling", value: 0.6 },
       ],
     },
     fix: {
@@ -269,7 +278,7 @@ const issues: Issue[] = [
           kind: "mat",
           targetPrice: "$199",
           marketSignal: "+47% search YoY",
-          projectedRevenue: 78000,
+          projectedRevenue: 50000,
           reasoning: "Captures search demand currently routed to 9 competitors. Pairs with Standing Desk M2 as natural bundle.",
         },
         {
@@ -277,7 +286,7 @@ const issues: Issue[] = [
           kind: "monitor",
           targetPrice: "$149",
           marketSignal: "78% co-purchase rate",
-          projectedRevenue: 64000,
+          projectedRevenue: 42000,
           reasoning: "Existing customers buy from competitors after Pro Chair purchase. Bundling captures the next cart natively.",
         },
         {
@@ -285,7 +294,7 @@ const issues: Issue[] = [
           kind: "chair",
           targetPrice: "$349",
           marketSignal: "12% inquiry volume unserved",
-          projectedRevenue: 44000,
+          projectedRevenue: 28000,
           reasoning: "Support team logs 12% of inquiries for larger size. Variant-only launch, minimal manufacturing change.",
         },
       ],
@@ -299,7 +308,7 @@ const issues: Issue[] = [
               kind: "chair",
               targetPrice: "$349",
               marketSignal: "12% inquiry volume unserved",
-              projectedRevenue: 44000,
+              projectedRevenue: 28000,
               reasoning: "Variant-only launch. No new supplier, no new SKU class. Captures the smallest verified demand pocket with minimal product risk.",
             },
           ],
@@ -313,7 +322,7 @@ const issues: Issue[] = [
               kind: "desk",
               targetPrice: "$729",
               marketSignal: "Bundle uplift +18%",
-              projectedRevenue: 92000,
+              projectedRevenue: 60000,
               reasoning: "Bundle Standing Desk M2 + new Standing Mat. Single SKU launch, cross-sell baked in at checkout.",
             },
             {
@@ -321,7 +330,7 @@ const issues: Issue[] = [
               kind: "chair",
               targetPrice: "$399",
               marketSignal: "78% co-purchase",
-              projectedRevenue: 71000,
+              projectedRevenue: 45000,
               reasoning: "Pre-bundle the natural next purchase. Captures cart immediately vs returning visit.",
             },
           ],
@@ -335,7 +344,7 @@ const issues: Issue[] = [
               kind: "mat",
               targetPrice: "$199",
               marketSignal: "+47% search YoY",
-              projectedRevenue: 78000,
+              projectedRevenue: 50000,
               reasoning: "Net-new SKU capturing unserved search demand.",
             },
             {
@@ -343,7 +352,7 @@ const issues: Issue[] = [
               kind: "cushion",
               targetPrice: "$29/mo",
               marketSignal: "Net-new revenue model",
-              projectedRevenue: 96000,
+              projectedRevenue: 60000,
               reasoning: "Quarterly cushion + lumbar pad refresh. Subscription LTV multiplier vs one-time furniture purchase.",
             },
             {
@@ -351,7 +360,7 @@ const issues: Issue[] = [
               kind: "chair",
               targetPrice: "$349",
               marketSignal: "12% inquiry unserved",
-              projectedRevenue: 44000,
+              projectedRevenue: 28000,
               reasoning: "Size variant launch, minimal manufacturing change.",
             },
           ],
@@ -367,13 +376,13 @@ const issues: Issue[] = [
     reasoning:
       "Furniture buyers face high purchase anxiety: large ticket, can't physically test, assembly uncertainty. Industry benchmark uses 5 trust signals (warranty, return, assembly, shipping, payment). ErgoFlex shows 2/5.",
     impact: {
-      crLift: 4.1,
-      revenueLift: 78000,
+      crLift: 7,
+      revenueLift: 85000,
       confidence: "high",
       breakdown: [
-        { source: "Warranty anxiety resolution", value: 1.6 },
-        { source: "Return risk resolution", value: 1.5 },
-        { source: "Assembly anxiety resolution", value: 1.0 },
+        { source: "Warranty anxiety resolution", value: 2.7 },
+        { source: "Return risk resolution", value: 2.5 },
+        { source: "Assembly anxiety resolution", value: 1.8 },
       ],
     },
     fix: {
@@ -432,13 +441,13 @@ const issues: Issue[] = [
     reasoning:
       "Top performers buried below fold. 14 dead-stock SKUs (zero sales / 60d) consume navigation attention. Visitor lands on slow-movers first, bounces before reaching converters.",
     impact: {
-      crLift: 6.2,
-      revenueLift: 118000,
+      crLift: 4,
+      revenueLift: 45000,
       confidence: "high",
       breakdown: [
-        { source: "Top-performer surface lift", value: 3.4 },
-        { source: "Reduced dead-stock distraction", value: 1.8 },
-        { source: "Category clarity gain", value: 1.0 },
+        { source: "Top-performer surface lift", value: 2.2 },
+        { source: "Reduced dead-stock distraction", value: 1.2 },
+        { source: "Category clarity gain", value: 0.6 },
       ],
     },
     fix: {
@@ -948,7 +957,8 @@ function AuditReportScreen({ onOpenFix }: { onOpenFix: (id: string) => void }) {
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">synthesis</span>
             <span className="font-mono text-[10px] text-neutral-500">
               · est. blended lift ·{" "}
-              <span className="text-forest">+{audit.estimatedBlendedLift.cr}% CR</span>{" "}
+              <span className="text-forest">+{audit.estimatedBlendedLift.crLiftRelative}% relative</span>{" "}
+              <span className="text-neutral-400">({store.currentCR}% → {audit.estimatedBlendedLift.crAbsoluteAfter}%)</span>{" "}
               ·{" "}
               <span className="text-forest">{fmtMoneyFull(audit.estimatedBlendedLift.revenue)}/yr</span>
             </span>
@@ -1073,7 +1083,7 @@ function IssueRow({ issue, index, onClick, delay }: { issue: Issue; index: numbe
 
       <div className="flex flex-col items-end gap-0.5 min-w-[110px] pt-1">
         <div className="font-display text-2xl text-forest tabular-nums leading-none">+{issue.impact.crLift}%</div>
-        <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500">est. CR lift</div>
+        <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500">est. relative lift</div>
         <div className="font-mono text-xs text-neutral-400 mt-1.5">{fmtMoney(issue.impact.revenueLift)} / yr</div>
       </div>
 
@@ -1666,7 +1676,7 @@ function FixScreen({
         <div className="border-y border-white/8 py-3 mb-5 flex items-center justify-between gap-8">
           <div className="flex items-baseline gap-8 flex-wrap">
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-0.5">est. CR lift</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-0.5">est. relative lift</div>
               <div className="font-display text-2xl text-forest tabular-nums">+{issue.impact.crLift}%</div>
             </div>
             <div>
@@ -1784,7 +1794,7 @@ function getBaselineAgentSummary(issue: Issue): string {
     case "homepage":
       return `proposed: promote ${issue.fix.promoted.length} top SKUs above fold, archive ${issue.fix.archived.length} dead-stock to clearance.`;
     case "prd":
-      return `proposed: launch ${issue.fix.candidates.length} new SKUs covering identified market gaps. projected $186k/yr net-new revenue.`;
+      return `proposed: launch ${issue.fix.candidates.length} new SKUs covering identified market gaps. projected ${fmtMoney(issue.impact.revenueLift)}/yr net-new revenue.`;
   }
 }
 
@@ -2007,7 +2017,7 @@ function MockPRDCandidates({ candidates }: { candidates: PRDCandidate[] }) {
     <div className="bg-white border border-neutral-300 shadow-sm overflow-hidden">
       <div className="bg-forest/5 border-b border-forest/30 px-3 py-2">
         <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-forest">proposed catalog expansion · 3 PRDs</div>
-        <div className="font-body text-xs text-neutral-700 mt-0.5">47 → 50 SKUs · estimated +$186k/yr new revenue</div>
+        <div className="font-body text-xs text-neutral-700 mt-0.5">47 → 50 SKUs · estimated +$120k/yr new revenue</div>
       </div>
 
       <div className="px-3 py-3 space-y-2 bg-white">
@@ -2060,17 +2070,22 @@ function ImpactSummary({
   onReset: () => void;
 }) {
   const approved = issues.filter(i => decisions[i.id] === "approve");
-  const totalCR = approved.reduce((s, i) => s + i.impact.crLift, 0);
+
+  // Compound aggregation — multiplicative, accounts for diminishing returns
+  const compoundedMultiplier = approved.reduce((m, i) => m * (1 + i.impact.crLift / 100), 1);
+  const newCR = store.currentCR * compoundedMultiplier;
+  const relativeLift = (compoundedMultiplier - 1) * 100;
   const totalRev = approved.reduce((s, i) => s + i.impact.revenueLift, 0);
 
-  const crAnim = useCountUp(totalCR, 1600, totalCR);
+  const newCRAnim = useCountUp(newCR, 1600, newCR);
+  const relAnim = useCountUp(relativeLift, 1600, relativeLift);
   const revAnim = useCountUp(totalRev, 1600, totalRev);
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="px-10 py-6 border-b border-ink/10 flex items-center justify-between">
         <span className="font-mono text-xs uppercase tracking-[0.25em]">audit complete</span>
-        <span className="font-mono text-xs text-neutral-500">3 / 3 reviewed</span>
+        <span className="font-mono text-xs text-neutral-500">{issues.length} / {issues.length} reviewed</span>
       </header>
 
       <main className="flex-1 px-10 py-12 flex flex-col">
@@ -2081,9 +2096,12 @@ function ImpactSummary({
 
           <div className="grid grid-cols-2 gap-12 mb-12">
             <div>
-              <div className="font-display text-8xl text-forest leading-none tabular-nums">+{crAnim.toFixed(1)}%</div>
-              <div className="font-mono text-xs uppercase tracking-[0.2em] text-neutral-500 mt-3">conversion rate</div>
-              <div className="font-mono text-xs text-neutral-500 mt-1">{store.currentCR}% → {(store.currentCR + totalCR).toFixed(1)}%</div>
+              <div className="font-display text-8xl text-forest leading-none tabular-nums">{newCRAnim.toFixed(2)}%</div>
+              <div className="font-mono text-xs uppercase tracking-[0.2em] text-neutral-500 mt-3">projected conversion rate</div>
+              <div className="font-mono text-xs text-neutral-500 mt-1">
+                {store.currentCR}% → {newCR.toFixed(2)}% ·{" "}
+                <span className="text-forest">+{relAnim.toFixed(0)}% relative lift</span>
+              </div>
             </div>
             <div>
               <div className="font-display text-8xl text-ink leading-none tabular-nums">{fmtMoney(Math.round(revAnim))}</div>
@@ -2091,6 +2109,12 @@ function ImpactSummary({
               <div className="font-mono text-xs text-neutral-500 mt-1">on current traffic · {(store.monthlyTraffic / 1000).toFixed(0)}k / mo</div>
             </div>
           </div>
+
+          <BenchmarkBar
+            currentCR={store.currentCR}
+            projectedCR={newCR}
+            benchmarks={store.verticalBenchmarks}
+          />
 
           <div className="border-t border-ink/10 pt-6 mb-10">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-4">decisions</div>
@@ -2103,7 +2127,7 @@ function ImpactSummary({
                       {d === "approve" ? "approved" : "rejected"}
                     </span>
                     <span className="font-body text-sm text-ink flex-1">{issue.title}</span>
-                    <span className="font-mono text-xs text-neutral-500 w-20 text-right">+{issue.impact.crLift}%</span>
+                    <span className="font-mono text-xs text-neutral-500 w-24 text-right">+{issue.impact.crLift}% rel.</span>
                     <span className={`font-mono text-xs w-24 text-right ${d === "approve" ? "text-forest" : "text-neutral-400 line-through"}`}>
                       {fmtMoney(issue.impact.revenueLift)}
                     </span>
@@ -2130,6 +2154,113 @@ function ImpactSummary({
   );
 }
 
+function BenchmarkBar({
+  currentCR,
+  projectedCR,
+  benchmarks,
+}: {
+  currentCR: number;
+  projectedCR: number;
+  benchmarks: { median: number; topQuartile: number; topDecile: number };
+}) {
+  const [animProgress, setAnimProgress] = useState(0);
+  useEffect(() => {
+    setAnimProgress(0);
+    let start: number | null = null;
+    let frame: number;
+    const animate = (t: number) => {
+      if (start === null) start = t;
+      const elapsed = t - start;
+      const progress = Math.min(elapsed / 1800, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setAnimProgress(eased);
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [currentCR, projectedCR]);
+
+  const maxCR = 3.5;
+  const projectedAnim = currentCR + (projectedCR - currentCR) * animProgress;
+  const pct = (v: number) => (v / maxCR) * 100;
+
+  return (
+    <div className="mb-12 max-w-4xl">
+      <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-1 flex items-baseline justify-between">
+        <span>vertical benchmark · home & furniture</span>
+        <span className="font-mono text-[10px] normal-case tracking-normal text-neutral-600">
+          source · ECDB, IRP, Dynamic Yield 2024-25
+        </span>
+      </div>
+      <div className="font-mono text-[10px] text-neutral-500 mb-8">
+        where the store sits in the vertical distribution
+      </div>
+
+      <div className="relative h-32">
+        {/* axis track */}
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-white/20 -translate-y-1/2" />
+        <div
+          className="absolute top-1/2 h-px bg-forest/40 -translate-y-1/2 transition-all"
+          style={{ left: `${pct(currentCR)}%`, width: `${pct(projectedAnim) - pct(currentCR)}%` }}
+        />
+
+        {/* benchmark markers (ABOVE the axis) */}
+        <BenchmarkMarker pct={pct(benchmarks.median)} label="median" value={benchmarks.median} />
+        <BenchmarkMarker pct={pct(benchmarks.topQuartile)} label="top quartile" value={benchmarks.topQuartile} />
+        <BenchmarkMarker pct={pct(benchmarks.topDecile)} label="top decile" value={benchmarks.topDecile} />
+
+        {/* position dots (ON the axis, labels BELOW) */}
+        <PositionDot pct={pct(currentCR)} color="coral" value={currentCR} label="current" />
+        <PositionDot pct={pct(projectedAnim)} color="forest" value={projectedAnim} label="projected" big />
+
+        {/* axis end labels */}
+        <div className="absolute bottom-0 left-0 font-mono text-[9px] text-neutral-600 tabular-nums">0.0%</div>
+        <div className="absolute bottom-0 right-0 font-mono text-[9px] text-neutral-600 tabular-nums">{maxCR.toFixed(1)}%</div>
+      </div>
+    </div>
+  );
+}
+
+function BenchmarkMarker({ pct, label, value }: { pct: number; label: string; value: number }) {
+  return (
+    <div className="absolute top-0 -translate-x-1/2 flex flex-col items-center" style={{ left: `${pct}%` }}>
+      <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-400 whitespace-nowrap">
+        {label}
+      </div>
+      <div className="font-mono text-[10px] text-neutral-300 tabular-nums mt-0.5">{value.toFixed(1)}%</div>
+      <div className="w-px h-4 bg-neutral-500/70 mt-1" />
+    </div>
+  );
+}
+
+function PositionDot({
+  pct,
+  color,
+  value,
+  label,
+  big = false,
+}: {
+  pct: number;
+  color: "coral" | "forest";
+  value: number;
+  label: string;
+  big?: boolean;
+}) {
+  const dotCls = color === "coral" ? "bg-coral" : "bg-forest";
+  const ringCls = color === "coral" ? "ring-coral/25" : "ring-forest/30";
+  const textCls = color === "coral" ? "text-coral" : "text-forest";
+  const size = big ? "w-3.5 h-3.5" : "w-2.5 h-2.5";
+  return (
+    <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${pct}%` }}>
+      <div className={`${size} ${dotCls} rounded-full ring-4 ${ringCls}`} />
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center whitespace-nowrap pt-1">
+        <div className={`font-mono text-[11px] tabular-nums font-semibold ${textCls}`}>{value.toFixed(2)}%</div>
+        <div className={`font-mono text-[9px] uppercase tracking-[0.15em] ${textCls} opacity-80 mt-0.5`}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================================
 // APP
 // ============================================================================
@@ -2137,6 +2268,7 @@ function ImpactSummary({
 type Screen = "landing" | "analysis" | "report" | "fix" | "summary";
 
 export default function App() {
+  const [view, setView] = useState<"demo" | "prd">("prd");
   const [screen, setScreen] = useState<Screen>("landing");
   const [currentFixIndex, setCurrentFixIndex] = useState(0);
   const [decisions, setDecisions] = useState<Record<string, "approve" | "reject">>({});
@@ -2177,26 +2309,34 @@ export default function App() {
 
   return (
     <div className="bg-paper text-ink font-body antialiased">
-      {screen === "landing" && <LandingScreen onStart={startAnalysis} />}
-      {screen === "analysis" && <AnalysisScreen onComplete={analysisComplete} />}
-      {screen === "report" && <AuditReportScreen onOpenFix={openFix} />}
-      {screen === "fix" && (
-        <FixScreen
-          issue={issues[currentFixIndex]}
-          index={currentFixIndex + 1}
-          total={issues.length}
-          onDecide={decideFix}
-        />
-      )}
-      {screen === "summary" && <ImpactSummary decisions={decisions} onReset={reset} />}
+      <TopTabBar view={view} setView={setView} />
 
-      {screen !== "landing" && screen !== "summary" && (
-        <button
-          onClick={reset}
-          className="fixed bottom-6 right-6 font-mono text-xs uppercase tracking-[0.2em] text-neutral-400 hover:text-ink transition-colors bg-paper border border-ink/15 px-3 py-2"
-        >
-          ↻ reset
-        </button>
+      {view === "prd" && <PRDScreen />}
+
+      {view === "demo" && (
+        <>
+          {screen === "landing" && <LandingScreen onStart={startAnalysis} />}
+          {screen === "analysis" && <AnalysisScreen onComplete={analysisComplete} />}
+          {screen === "report" && <AuditReportScreen onOpenFix={openFix} />}
+          {screen === "fix" && (
+            <FixScreen
+              issue={issues[currentFixIndex]}
+              index={currentFixIndex + 1}
+              total={issues.length}
+              onDecide={decideFix}
+            />
+          )}
+          {screen === "summary" && <ImpactSummary decisions={decisions} onReset={reset} />}
+
+          {screen !== "landing" && screen !== "summary" && (
+            <button
+              onClick={reset}
+              className="fixed bottom-6 right-6 font-mono text-xs uppercase tracking-[0.2em] text-neutral-400 hover:text-ink transition-colors bg-paper border border-ink/15 px-3 py-2"
+            >
+              ↻ reset
+            </button>
+          )}
+        </>
       )}
     </div>
   );
