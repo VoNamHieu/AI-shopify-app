@@ -13,8 +13,8 @@ const store = {
   skuCount: 47,
   monthlyTraffic: 84000,
   currentCR: 1.8,
-  aov: 300,
-  monthlyRevenue: 453600,
+  aov: 84,
+  monthlyRevenue: 127000,
   verticalBenchmarks: { median: 1.8, topQuartile: 2.5, topDecile: 3.0 },
 };
 
@@ -72,7 +72,7 @@ const agents: Agent[] = [
       { at: 2400, text: "demand gap · ergonomic standing mat (no SKU)" },
       { at: 4400, text: "demand gap · monitor riser bundle (no SKU)" },
       { at: 6300, text: "expansion candidate · pro chair XL (size variant)" },
-      { at: 8200, text: "projected TAM uplift · $186k / yr" },
+      { at: 8200, text: "projected TAM uplift · ~$120k / yr" },
       { at: 10100, text: "FLAG · 3 unserved high-demand categories" },
     ],
   },
@@ -164,10 +164,10 @@ const audit = {
     "ErgoFlex sits at the furniture vertical median (1.8% CR — ECDB 2024). Top quartile reaches ~2.5%; the CRO ceiling in furniture hovers near 3% (Wayfair itself runs 1.5–2.0% US currently per Grips Intelligence). The proposed fix stack lifts the store from median toward top quartile — meaningful but bounded by vertical reality. Three catalog gaps map directly to competitor traffic. The top-performing PDP misses 3 of 5 trust signals standard for the vertical. The highest-spend ad creative pulls audiences with a pain-relief promise the hero never honors. Top-performing SKUs are buried below fold on the homepage.",
   estimatedBlendedLift: {
     crLiftRelative: 26,
-    crAbsoluteAfter: 2.26,
-    revenueLiftFromCR: 1400000,
+    crAbsoluteAfter: 2.3,
+    revenueLiftFromCR: 315000,
     revenueLiftFromCatalog: 120000,
-    revenue: 1520000,
+    revenue: 435000,
   },
 };
 
@@ -216,12 +216,12 @@ const issues: Issue[] = [
     impact: {
       kind: "cr",
       crLift: 13,
-      revenueLift: 708000,
+      revenueLift: 175000,
       confidence: "medium-high",
       breakdown: [
-        { source: "Message-match restoration", value: 8.0 },
-        { source: "Price anchor visibility", value: 3.2 },
-        { source: "Pain-point reinforcement", value: 1.8 },
+        { source: "Message-match restoration", value: 70 },
+        { source: "Price anchor visibility", value: 20 },
+        { source: "Pain-point reinforcement", value: 10 },
       ],
     },
     fix: {
@@ -255,7 +255,7 @@ const issues: Issue[] = [
     id: "catalog-expansion",
     severity: "high",
     dimension: "Catalog Strategy",
-    title: "3 high-demand categories unserved · projected $186k/yr new revenue",
+    title: "3 high-demand categories unserved · ~$120k/yr in net-new revenue",
     reasoning:
       "Market analysis identified 3 product gaps with strong demand signals and existing customer co-purchase patterns. Each gap maps to traffic currently flowing to competitors. Launching these SKUs creates net-new TAM plus cross-sell paths on existing traffic.",
     impact: {
@@ -264,9 +264,9 @@ const issues: Issue[] = [
       revenueLift: 120000,
       confidence: "medium-high",
       breakdown: [
-        { source: "Captured search demand", value: 1.3 },
-        { source: "Cross-sell on existing traffic", value: 1.1 },
-        { source: "AOV lift from bundling", value: 0.6 },
+        { source: "Captured search demand", value: 45 },
+        { source: "Cross-sell on existing traffic", value: 35 },
+        { source: "AOV lift from bundling", value: 20 },
       ],
     },
     fix: {
@@ -382,12 +382,12 @@ const issues: Issue[] = [
     impact: {
       kind: "cr",
       crLift: 7,
-      revenueLift: 381000,
+      revenueLift: 90000,
       confidence: "high",
       breakdown: [
-        { source: "Warranty anxiety resolution", value: 2.7 },
-        { source: "Return risk resolution", value: 2.5 },
-        { source: "Assembly anxiety resolution", value: 1.8 },
+        { source: "Warranty anxiety resolution", value: 40 },
+        { source: "Return risk resolution", value: 35 },
+        { source: "Assembly anxiety resolution", value: 25 },
       ],
     },
     fix: {
@@ -448,12 +448,12 @@ const issues: Issue[] = [
     impact: {
       kind: "cr",
       crLift: 4,
-      revenueLift: 218000,
+      revenueLift: 50000,
       confidence: "high",
       breakdown: [
-        { source: "Top-performer surface lift", value: 2.2 },
-        { source: "Reduced dead-stock distraction", value: 1.2 },
-        { source: "Category clarity gain", value: 0.6 },
+        { source: "Top-performer surface lift", value: 55 },
+        { source: "Reduced dead-stock distraction", value: 30 },
+        { source: "Category clarity gain", value: 15 },
       ],
     },
     fix: {
@@ -1694,11 +1694,11 @@ function FixScreen({
               <div className="font-body text-sm text-ink">{issue.impact.confidence}</div>
             </div>
             <div className="border-l border-white/10 pl-6">
-              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-1">breakdown</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-1">drivers · share of lift</div>
               <div className="flex flex-col gap-0.5">
                 {issue.impact.breakdown.map(b => (
                   <div key={b.source} className="flex items-baseline gap-3 font-mono text-[11px]">
-                    <span className="text-forest tabular-nums w-10">+{b.value}%</span>
+                    <span className="text-forest tabular-nums w-10">~{b.value}%</span>
                     <span className="text-neutral-300">{b.source}</span>
                   </div>
                 ))}
@@ -2103,10 +2103,10 @@ function ImpactSummary({
 
           <div className="grid grid-cols-2 gap-12 mb-12">
             <div>
-              <div className="font-display text-8xl text-forest leading-none tabular-nums">{newCRAnim.toFixed(2)}%</div>
+              <div className="font-display text-8xl text-forest leading-none tabular-nums">{newCRAnim.toFixed(1)}%</div>
               <div className="font-mono text-xs uppercase tracking-[0.2em] text-neutral-500 mt-3">projected conversion rate</div>
               <div className="font-mono text-xs text-neutral-500 mt-1">
-                {store.currentCR}% → {newCR.toFixed(2)}% ·{" "}
+                {store.currentCR}% → ~{newCR.toFixed(1)}% ·{" "}
                 <span className="text-forest">+{relAnim.toFixed(0)}% relative lift</span>
               </div>
             </div>
