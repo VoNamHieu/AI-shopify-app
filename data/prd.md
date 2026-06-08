@@ -51,17 +51,19 @@ Each fix surfaces with:
 
 | Tier | Price | Includes |
 |------|-------|----------|
-| Audit | $99 one-time | Single full audit, all 5 agents, exportable PDF |
-| Growth | $249 / mo | Monthly re-audit, trend tracking, fix changelog |
-| Implementation | $999 / mo | Audit + automated implementation of approved fixes via Shopify API |
+| Audit | $49 one-time | Single full audit, all 5 agents, exportable PDF |
+| Starter | $29 / mo | Quarterly re-audit, single store, fix changelog |
+| Growth | $59 / mo | Monthly re-audit, trend tracking, fix changelog |
+| Implementation | $149 / mo | Audit + automated implementation of approved fixes via Shopify API |
 
-The $99 wedge undercuts the cheapest agency engagement by ~99% while still feeling priced like a real product (not a freemium toy).
+The $49 wedge undercuts the cheapest agency engagement by ~99% while still feeling priced like a real product (not a freemium toy).
 
 ### Unit economics
 
 - COGS per audit ≈ $4 (model inference, Shopify API calls, storage)
-- Gross margin on audit tier: ~96%
-- Gross margin on growth tier: ~92% (monthly re-runs)
+- Gross margin on audit tier: ~92%
+- Gross margin on starter tier: ~86% (quarterly re-runs)
+- Gross margin on growth tier: ~80% (monthly re-runs)
 - Implementation tier margin TBD — depends on action complexity
 
 ## Roadmap
