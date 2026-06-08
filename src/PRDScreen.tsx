@@ -134,7 +134,7 @@ export function PRDScreen() {
             <HeroStat label="sections" value={String(stats.sections).padStart(2, "0")} />
             <HeroStat label="words" value={stats.words.toLocaleString()} />
             <HeroStat label="read time" value={`${stats.minutes} min`} />
-            <HeroStat label="updated" value="2026-06-08" mono />
+            <HeroStat label="updated" value="2026-02-01" mono />
           </div>
         </header>
 
