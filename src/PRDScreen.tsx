@@ -332,7 +332,7 @@ export function PRDScreen() {
             <span>store_auditor / PRD · draft</span>
           </div>
           <div className="flex items-center gap-6">
-            <span>contact · charles@ergoflex.example</span>
+            <span>contact · vonamhieu.work@gmail.com</span>
             <a href="#top" className="text-neutral-400 hover:text-amber transition-colors">
               ↑ back to top
             </a>
