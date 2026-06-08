@@ -1,2798 +1,2203 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  BadgeCheck,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  CircleDotDashed,
-  Download,
-  Loader2,
-  ShoppingBag,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
-type GenerationStatus =
-  | "idle"
-  | "analyzing"
-  | "analysisReady"
-  | "processing"
-  | "complete";
+// ============================================================================
+// DATA
+// ============================================================================
 
-type Product = {
-  name: string;
-  description: string;
-  targetMarket: string;
+const store = {
+  name: "ErgoFlex",
+  url: "ergoflex.demo.shop",
+  vertical: "Home office furniture",
+  skuCount: 47,
+  monthlyTraffic: 84000,
+  currentCR: 1.8,
+  monthlyRevenue: 127000,
 };
 
-type Competitor = {
-  name: string;
-  price: string;
-  positioning: string;
-  keywords: string[];
-  reviewThemes: string[];
-  cta: string;
-};
-
-type LandingPageOption = {
+type Thought = { at: number; text: string };
+type Agent = {
   id: string;
-  layout: "editorial" | "studio" | "conversion";
   name: string;
-  label: string;
-  angle: string;
-  ghost: string;
-  bg: string;
-  panel: string;
-  accent: string;
-  dark: string;
-  headline: string;
-  subheadline: string;
-  note: string;
-  cta: string;
-  price: string;
-  benefits: [string, string][];
-  comparison: [string, string, string][];
-  chips: string[];
-  finalCta: string;
+  symbol: string;
+  tier: 1 | 2 | 3;
+  startDelay: number;
+  duration: number;
+  findingsCount: number;
+  thoughts: Thought[];
 };
 
-const demoProduct: Product = {
-  name: "ErgoFlex Chair",
-  description:
-    "An ergonomic office chair designed for remote workers who sit for long hours and want better posture, comfort, and productivity.",
-  targetMarket: "Remote workers and home office professionals.",
+type Tier = { id: 1 | 2 | 3; label: string; description: string };
+
+const tiers: Tier[] = [
+  { id: 1, label: "research", description: "market context · competitive landscape" },
+  { id: 2, label: "strategy", description: "catalog gap analysis · expansion candidates" },
+  { id: 3, label: "optimization", description: "tactical fixes · current store surface" },
+];
+
+const agents: Agent[] = [
+  // TIER 1 — RESEARCH
+  {
+    id: "market",
+    name: "Market Research",
+    symbol: "01",
+    tier: 1,
+    startDelay: 0,
+    duration: 10000,
+    findingsCount: 8,
+    thoughts: [
+      { at: 400, text: "scanning category · home office furniture" },
+      { at: 2000, text: "indexed 12 competitor stores" },
+      { at: 3800, text: "price band · $180-$520, median $310" },
+      { at: 5400, text: "trending search · 'back pain office chair' +47% YoY" },
+      { at: 7100, text: "competitor weakness · 8/12 lack warranty above fold" },
+      { at: 8900, text: "FLAG · middle-of-pack pricing, no defensible angle" },
+    ],
+  },
+
+  // TIER 2 — STRATEGY
+  {
+    id: "catalog",
+    name: "Catalog Strategy",
+    symbol: "02",
+    tier: 2,
+    startDelay: 3000,
+    duration: 11000,
+    findingsCount: 6,
+    thoughts: [
+      { at: 500, text: "cross-referencing 47 SKUs vs market demand" },
+      { at: 2400, text: "demand gap · ergonomic standing mat (no SKU)" },
+      { at: 4400, text: "demand gap · monitor riser bundle (no SKU)" },
+      { at: 6300, text: "expansion candidate · pro chair XL (size variant)" },
+      { at: 8200, text: "projected TAM uplift · $186k / yr" },
+      { at: 10100, text: "FLAG · 3 unserved high-demand categories" },
+    ],
+  },
+
+  // TIER 3 — OPTIMIZATION (3 agents, run in parallel)
+  {
+    id: "page",
+    name: "Page Optimization",
+    symbol: "03",
+    tier: 3,
+    startDelay: 6000,
+    duration: 12000,
+    findingsCount: 14,
+    thoughts: [
+      { at: 500, text: "scanning homepage · 47 SKUs across 6 sections" },
+      { at: 2200, text: "revenue concentration · 8 SKUs = 73%" },
+      { at: 4100, text: "top performers buried below fold" },
+      { at: 6000, text: "PDP hero · 'premium ergonomic seating'" },
+      { at: 8000, text: "social proof · 3/247 reviews visible" },
+      { at: 10500, text: "FLAG · hero weak fit · placement inverted" },
+    ],
+  },
+  {
+    id: "trust",
+    name: "Trust Signals",
+    symbol: "04",
+    tier: 3,
+    startDelay: 6500,
+    duration: 10500,
+    findingsCount: 5,
+    thoughts: [
+      { at: 600, text: "auditing trust layer on PDP" },
+      { at: 2400, text: "present · SSL, payment badges" },
+      { at: 4500, text: "missing · warranty terms" },
+      { at: 6400, text: "missing · return policy details" },
+      { at: 8200, text: "missing · assembly support info" },
+      { at: 9800, text: "FLAG · 3/5 anxiety triggers unresolved" },
+    ],
+  },
+  {
+    id: "funnel",
+    name: "Ad ↔ Page",
+    symbol: "05",
+    tier: 3,
+    startDelay: 7200,
+    duration: 10500,
+    findingsCount: 3,
+    thoughts: [
+      { at: 400, text: "pulling active ad creatives" },
+      { at: 2300, text: "top ad · 'back pain relief from $299'" },
+      { at: 4400, text: "comparing ad copy → hero copy" },
+      { at: 6700, text: "mismatch · 'pain relief' vs 'premium seating'" },
+      { at: 9000, text: "FLAG · 30%+ bounce on paid traffic" },
+    ],
+  },
+];
+
+const ANALYSIS_DURATION = 18000;
+
+const audit = {
+  scores: {
+    overall: 51,
+    dimensions: [
+      { key: "catalog-strategy", label: "Catalog Strategy", value: 38 },
+      { key: "funnel", label: "Ad ↔ Page Coherence", value: 41 },
+      { key: "market", label: "Market Position", value: 45 },
+      { key: "trust", label: "Trust", value: 49 },
+      { key: "page", label: "Page Optimization", value: 56 },
+    ],
+  },
+  marketContext: {
+    competitorsIndexed: 12,
+    priceMedian: 310,
+    priceBand: { low: 180, high: 520 },
+    pricePosition: "middle · undifferentiated",
+    demandTrend: { label: "back pain office chair", change: 47 },
+    competitorWeaknesses: [
+      "8/12 lack warranty visible above fold",
+      "11/12 do not mention assembly support",
+      "5/12 missing return policy on PDP",
+    ],
+    gaps: [
+      { name: "Ergonomic standing mat", segment: "$180-$220", signal: "+47% search YoY", projected: 78000 },
+      { name: "Monitor riser bundle", segment: "$120-$180", signal: "78% co-purchase rate", projected: 64000 },
+      { name: "Pro Chair XL (size variant)", segment: "$329-$359", signal: "12% inquiry volume unserved", projected: 44000 },
+    ],
+  },
+  narrative:
+    "Market analysis places ErgoFlex in a middle-of-pack competitive position with no defensible differentiation against 12 indexed competitors. Three catalog gaps map directly to traffic currently flowing to competitors. The top-performing PDP misses 3 of 5 trust signals standard for furniture vertical. The highest-spend ad creative pulls audiences with a pain-relief promise that the hero never honors. And top-performing SKUs are buried below fold on the homepage.",
+  estimatedBlendedLift: { cr: 24.5, revenue: 560000 },
 };
 
-const competitors: Competitor[] = [
-  {
-    name: "ComfortPro",
-    price: "$39",
-    positioning: "Ergonomic comfort for long workdays",
-    keywords: ["ergonomic", "comfort", "back support", "posture"],
-    reviewThemes: ["back pain relief", "comfortable seat", "easy setup"],
-    cta: "Work comfortably longer",
-  },
-  {
-    name: "WorkNest",
-    price: "$45",
-    positioning: "Premium workspace upgrade",
-    keywords: ["premium", "productivity", "home office", "focus"],
-    reviewThemes: ["productivity", "premium look", "durable materials"],
-    cta: "Upgrade your workspace",
-  },
-  {
-    name: "SitWell",
-    price: "$29",
-    positioning: "Affordable daily comfort",
-    keywords: ["affordable", "daily comfort", "simple setup"],
-    reviewThemes: ["budget-friendly", "practical", "good value"],
-    cta: "Better comfort for less",
-  },
-];
+type PRDCandidate = {
+  name: string;
+  kind: string;
+  targetPrice: string;
+  marketSignal: string;
+  projectedRevenue: number;
+  reasoning: string;
+};
 
-const processingSteps = [
-  "Analyzing competitor signals",
-  "Extracting keyword gaps",
-  "Generating positioning strategy",
-  "Preparing AI recommendations",
-];
+type HeroRefinement = { trigger: string; agentResponse: string; afterCopy: string };
+type TrustRefinement = { trigger: string; agentResponse: string; after: string[] };
+type HomepageRefinement = { trigger: string; agentResponse: string; promoted: string[]; archived: string[] };
+type PRDRefinement = { trigger: string; agentResponse: string; candidates: PRDCandidate[] };
 
-const storefrontSteps = [
-  "Reading generated analysis",
-  "Selecting storefront template",
-  "Creating store sections",
-  "Storefront preview ready",
-];
-
-const landingPageOptions: LandingPageOption[] = [
-  {
-    id: "comfort-productivity",
-    layout: "editorial",
-    name: "Comfort + Productivity",
-    label: "Recommended",
-    angle: "Best fit for remote workers who want posture support and focus.",
-    ghost: "SIT BETTER",
-    bg: "#78B893",
-    panel: "#93C9A7",
-    accent: "#047857",
-    dark: "#10241C",
-    headline: "Sit Better. Work Better.",
-    subheadline:
-      "ErgoFlex helps remote workers stay comfortable, focused, and supported through long workdays.",
-    note: "Designed for posture, comfort, and daily productivity.",
-    cta: "Shop ErgoFlex",
-    price: "$36",
-    benefits: [
-      ["Posture Support", "Built to support your back through long focus sessions."],
-      ["All-Day Comfort", "Soft, breathable comfort for remote work routines."],
-      ["Productivity Ready", "Stay focused longer with a workspace built around comfort."],
-    ],
-    comparison: [
-      ["Price", "$36", "$29-$45"],
-      ["Positioning", "Comfort + productivity", "Comfort or affordability"],
-      ["Best For", "Remote workers", "General office use"],
-    ],
-    chips: [
-      "Back pain relief",
-      "Comfortable seat",
-      "Productivity",
-      "Home office setup",
-      "Good value",
-    ],
-    finalCta: "Upgrade your workday comfort",
-  },
-  {
-    id: "premium-workspace",
-    layout: "studio",
-    name: "Premium Workspace",
-    label: "Upsell angle",
-    angle: "A polished page for merchants who want a premium workspace story.",
-    ghost: "FOCUS MODE",
-    bg: "#6EB5FF",
-    panel: "#8DC4FF",
-    accent: "#2563eb",
-    dark: "#0C1B33",
-    headline: "Build a Better Home Office.",
-    subheadline:
-      "ErgoFlex turns long workdays into a cleaner, calmer workspace experience with supportive comfort and a premium look.",
-    note: "Premium-feeling support without premium pricing.",
-    cta: "Upgrade Your Chair",
-    price: "$36",
-    benefits: [
-      ["Workspace Upgrade", "A refined silhouette that makes any desk setup feel intentional."],
-      ["Focus Support", "Comfort cues that help reduce distractions during deep work."],
-      ["Durable Daily Build", "Made for repeated remote-work routines and long meetings."],
-    ],
-    comparison: [
-      ["Price", "$36", "$39-$45 premium peers"],
-      ["Positioning", "Premium feel + accessible price", "Premium price first"],
-      ["Best For", "Home-office professionals", "Style-led shoppers"],
-    ],
-    chips: [
-      "Premium look",
-      "Productivity",
-      "Durable materials",
-      "Focus",
-      "Home office setup",
-    ],
-    finalCta: "Make your workspace feel complete",
-  },
-  {
-    id: "value-comfort",
-    layout: "conversion",
-    name: "Accessible Comfort",
-    label: "Value angle",
-    angle: "A direct-response page for price-sensitive comfort shoppers.",
-    ghost: "GOOD VALUE",
-    bg: "#F4845F",
-    panel: "#F79B7F",
-    accent: "#ea580c",
-    dark: "#35180D",
-    headline: "Daily Comfort, Fair Price.",
-    subheadline:
-      "ErgoFlex gives remote workers the posture support they need without pushing into premium chair pricing.",
-    note: "Smart comfort for the home office budget.",
-    cta: "Get Better Comfort",
-    price: "$36",
-    benefits: [
-      ["Fair Pricing", "Positioned below premium competitors while keeping a quality feel."],
-      ["Simple Setup", "Easy to place into an existing home-office routine."],
-      ["Practical Support", "Comfort-first details for everyday work, calls, and focus blocks."],
-    ],
-    comparison: [
-      ["Price", "$36", "$29 budget to $45 premium"],
-      ["Positioning", "Accessible ergonomic comfort", "Cheap comfort or premium upgrades"],
-      ["Best For", "Budget-aware remote workers", "General office use"],
-    ],
-    chips: [
-      "Budget-friendly",
-      "Good value",
-      "Simple setup",
-      "Comfortable seat",
-      "Practical",
-    ],
-    finalCta: "Start sitting better for less",
-  },
-];
-
-function App() {
-  const [product, setProduct] = useState<Product>(demoProduct);
-  const [status, setStatus] = useState<GenerationStatus>("idle");
-  const [ideaFound, setIdeaFound] = useState(false);
-  const [isFindingIdea, setIsFindingIdea] = useState(false);
-  const [activeStep, setActiveStep] = useState<number | null>(null);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-  const [selectedPage, setSelectedPage] = useState(0);
-  const [uploadedPreviewImage, setUploadedPreviewImage] = useState<string | null>(
-    null,
-  );
-  const [exportMessage, setExportMessage] = useState("");
-  const timers = useRef<number[]>([]);
-
-  useEffect(() => {
-    return () => timers.current.forEach(window.clearTimeout);
-  }, []);
-
-  useEffect(() => {
-    if (!exportMessage) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setExportMessage(""), 2800);
-    return () => window.clearTimeout(timer);
-  }, [exportMessage]);
-
-  const findTrendingProduct = () => {
-    if (ideaFound || isFindingIdea) {
-      return;
-    }
-
-    setIsFindingIdea(true);
-    const timer = window.setTimeout(() => {
-      setIdeaFound(true);
-      setIsFindingIdea(false);
-    }, 1400);
-    timers.current.push(timer);
+type Issue = {
+  id: string;
+  severity: "critical" | "high" | "medium";
+  dimension: string;
+  title: string;
+  reasoning: string;
+  impact: {
+    crLift: number;
+    revenueLift: number;
+    confidence: "high" | "medium-high" | "medium";
+    breakdown: { source: string; value: number }[];
   };
+  fix:
+    | { type: "homepage"; promoted: string[]; archived: string[]; kept: string[]; refinements: HomepageRefinement[] }
+    | { type: "trust"; before: string[]; after: string[]; refinements: TrustRefinement[] }
+    | { type: "hero"; beforeCopy: string; afterCopy: string; diffSegments: { kind: "remove" | "add" | "keep"; text: string }[]; refinements: HeroRefinement[] }
+    | { type: "prd"; gaps: { name: string; segment: string; competitorCount: number }[]; candidates: PRDCandidate[]; refinements: PRDRefinement[] };
+};
 
-  const generateAnalysis = () => {
-    timers.current.forEach(window.clearTimeout);
-    timers.current = [];
-    setStatus("analyzing");
-    setCompletedSteps([]);
-    setActiveStep(0);
-    setSelectedPage(0);
-
-    processingSteps.forEach((_, index) => {
-      const timer = window.setTimeout(
-        () => {
-          setCompletedSteps((current) =>
-            current.includes(index) ? current : [...current, index],
-          );
-
-          if (index === processingSteps.length - 1) {
-            setActiveStep(null);
-            setStatus("analysisReady");
-          } else {
-            setActiveStep(index + 1);
-          }
+const issues: Issue[] = [
+  {
+    id: "ad-page-mismatch",
+    severity: "critical",
+    dimension: "Ad ↔ Page Coherence",
+    title: "Top-spend ad promises 'back pain relief'. Hero says 'premium seating'.",
+    reasoning:
+      "Ad audience clicks expecting health framing. Hero pivots to luxury framing. Cognitive mismatch drives bounce. $18.5k/mo ad spend pulls 412k impressions; conservative 30% mismatch-bounce ≈ $5.5k wasted monthly.",
+    impact: {
+      crLift: 8.4,
+      revenueLift: 144000,
+      confidence: "medium-high",
+      breakdown: [
+        { source: "Message-match restoration", value: 5.2 },
+        { source: "Price anchor visibility", value: 2.1 },
+        { source: "Pain-point reinforcement", value: 1.1 },
+      ],
+    },
+    fix: {
+      type: "hero",
+      beforeCopy: "Premium ergonomic seating, redefined",
+      afterCopy: "Engineered for back pain relief — ergonomic seating from $299",
+      diffSegments: [
+        { kind: "remove", text: "Premium ergonomic seating, redefined" },
+        { kind: "add", text: "Engineered for back pain relief — ergonomic seating from $299" },
+      ],
+      refinements: [
+        {
+          trigger: "less clinical tone",
+          agentResponse: "Softened framing — 'designed for' is less prescriptive than 'engineered for'. Keeps pain match, reads warmer.",
+          afterCopy: "Designed for back pain — ergonomic chairs from $299",
         },
-        650 + index * 650,
-      );
-      timers.current.push(timer);
-    });
-  };
-
-  const generateStorefront = () => {
-    timers.current.forEach(window.clearTimeout);
-    timers.current = [];
-    setStatus("processing");
-    setCompletedSteps([]);
-    setActiveStep(0);
-
-    storefrontSteps.forEach((_, index) => {
-      const timer = window.setTimeout(
-        () => {
-          setCompletedSteps((current) =>
-            current.includes(index) ? current : [...current, index],
-          );
-
-          if (index === storefrontSteps.length - 1) {
-            setActiveStep(null);
-            setStatus("complete");
-          } else {
-            setActiveStep(index + 1);
-          }
+        {
+          trigger: "try a question hook",
+          agentResponse: "Reframed as a direct question — addresses anxiety conversationally. Question format typically lifts engagement on health-framed traffic.",
+          afterCopy: "Tired of back pain? Ergonomic chairs from $299.",
         },
-        650 + index * 650,
-      );
-      timers.current.push(timer);
-    });
-  };
+        {
+          trigger: "emphasize value & warranty",
+          agentResponse: "Added warranty as trust amplifier on hero. Slightly longer but front-loads three trust signals at once.",
+          afterCopy: "End back pain · Ergonomic chair from $299 · 5-year warranty",
+        },
+      ],
+    },
+  },
+  {
+    id: "catalog-expansion",
+    severity: "high",
+    dimension: "Catalog Strategy",
+    title: "3 high-demand categories unserved · projected $186k/yr new revenue",
+    reasoning:
+      "Market analysis identified 3 product gaps with strong demand signals and existing customer co-purchase patterns. Each gap maps to traffic currently flowing to competitors. Launching these SKUs creates net-new TAM plus cross-sell paths on existing traffic.",
+    impact: {
+      crLift: 5.8,
+      revenueLift: 186000,
+      confidence: "medium-high",
+      breakdown: [
+        { source: "Captured search demand", value: 2.6 },
+        { source: "Cross-sell on existing traffic", value: 2.2 },
+        { source: "AOV lift from bundling", value: 1.0 },
+      ],
+    },
+    fix: {
+      type: "prd",
+      gaps: [
+        { name: "Ergonomic standing mat", segment: "$180-$220", competitorCount: 9 },
+        { name: "Monitor riser bundle", segment: "$120-$180", competitorCount: 7 },
+        { name: "Pro Chair XL · size variant", segment: "$329-$359", competitorCount: 4 },
+      ],
+      candidates: [
+        {
+          name: "Standing Mat Pro",
+          kind: "mat",
+          targetPrice: "$199",
+          marketSignal: "+47% search YoY",
+          projectedRevenue: 78000,
+          reasoning: "Captures search demand currently routed to 9 competitors. Pairs with Standing Desk M2 as natural bundle.",
+        },
+        {
+          name: "Monitor Riser Bundle",
+          kind: "monitor",
+          targetPrice: "$149",
+          marketSignal: "78% co-purchase rate",
+          projectedRevenue: 64000,
+          reasoning: "Existing customers buy from competitors after Pro Chair purchase. Bundling captures the next cart natively.",
+        },
+        {
+          name: "Pro Chair XL",
+          kind: "chair",
+          targetPrice: "$349",
+          marketSignal: "12% inquiry volume unserved",
+          projectedRevenue: 44000,
+          reasoning: "Support team logs 12% of inquiries for larger size. Variant-only launch, minimal manufacturing change.",
+        },
+      ],
+      refinements: [
+        {
+          trigger: "more conservative scope",
+          agentResponse: "Stripped to Pro Chair XL only — variant launch, no supplier risk, no new SKU complexity. Lower TAM but near-zero execution risk.",
+          candidates: [
+            {
+              name: "Pro Chair XL",
+              kind: "chair",
+              targetPrice: "$349",
+              marketSignal: "12% inquiry volume unserved",
+              projectedRevenue: 44000,
+              reasoning: "Variant-only launch. No new supplier, no new SKU class. Captures the smallest verified demand pocket with minimal product risk.",
+            },
+          ],
+        },
+        {
+          trigger: "reframe as bundles",
+          agentResponse: "Restructured as bundle-only plays. AOV lift becomes the primary lever vs new-SKU TAM. Lower margin per SKU but faster to ship.",
+          candidates: [
+            {
+              name: "Standing Desk + Mat Bundle",
+              kind: "desk",
+              targetPrice: "$729",
+              marketSignal: "Bundle uplift +18%",
+              projectedRevenue: 92000,
+              reasoning: "Bundle Standing Desk M2 + new Standing Mat. Single SKU launch, cross-sell baked in at checkout.",
+            },
+            {
+              name: "Pro Chair + Monitor Riser",
+              kind: "chair",
+              targetPrice: "$399",
+              marketSignal: "78% co-purchase",
+              projectedRevenue: 71000,
+              reasoning: "Pre-bundle the natural next purchase. Captures cart immediately vs returning visit.",
+            },
+          ],
+        },
+        {
+          trigger: "add a subscription play",
+          agentResponse: "Added a recurring revenue line — chair refresh subscription. Furniture rarely fits subscription model, but ergonomic accessories (cushions/mats) wear out and need replacement.",
+          candidates: [
+            {
+              name: "Standing Mat Pro",
+              kind: "mat",
+              targetPrice: "$199",
+              marketSignal: "+47% search YoY",
+              projectedRevenue: 78000,
+              reasoning: "Net-new SKU capturing unserved search demand.",
+            },
+            {
+              name: "ErgoFlex Refresh (subscription)",
+              kind: "cushion",
+              targetPrice: "$29/mo",
+              marketSignal: "Net-new revenue model",
+              projectedRevenue: 96000,
+              reasoning: "Quarterly cushion + lumbar pad refresh. Subscription LTV multiplier vs one-time furniture purchase.",
+            },
+            {
+              name: "Pro Chair XL",
+              kind: "chair",
+              targetPrice: "$349",
+              marketSignal: "12% inquiry unserved",
+              projectedRevenue: 44000,
+              reasoning: "Size variant launch, minimal manufacturing change.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "trust-signals-pdp",
+    severity: "high",
+    dimension: "Trust",
+    title: "PDP missing 3 of 5 trust signals for furniture vertical",
+    reasoning:
+      "Furniture buyers face high purchase anxiety: large ticket, can't physically test, assembly uncertainty. Industry benchmark uses 5 trust signals (warranty, return, assembly, shipping, payment). ErgoFlex shows 2/5.",
+    impact: {
+      crLift: 4.1,
+      revenueLift: 78000,
+      confidence: "high",
+      breakdown: [
+        { source: "Warranty anxiety resolution", value: 1.6 },
+        { source: "Return risk resolution", value: 1.5 },
+        { source: "Assembly anxiety resolution", value: 1.0 },
+      ],
+    },
+    fix: {
+      type: "trust",
+      before: ["SSL secure", "Visa / Mastercard / PayPal"],
+      after: [
+        "SSL secure",
+        "Visa / Mastercard / PayPal",
+        "5-year structural warranty",
+        "90-day free return shipping",
+        "Free assembly video + live chat",
+      ],
+      refinements: [
+        {
+          trigger: "add financing option",
+          agentResponse: "Added 0% APR financing — reduces price-anxiety for $299+ ticket. Affirm or Klarna integration typically takes 2 days.",
+          after: [
+            "SSL secure",
+            "Visa / Mastercard / PayPal",
+            "0% APR financing · 12 months",
+            "5-year structural warranty",
+            "90-day free return shipping",
+            "Free assembly video + live chat",
+          ],
+        },
+        {
+          trigger: "shorter labels",
+          agentResponse: "Compressed labels for scannability. Same 5 signals, half the vertical space on PDP. Tradeoff: less reassuring per signal.",
+          after: [
+            "SSL · secure checkout",
+            "Visa · MC · PayPal",
+            "5yr warranty",
+            "90d free returns",
+            "Assembly help · video + chat",
+          ],
+        },
+        {
+          trigger: "lead with returns",
+          agentResponse: "Reordered so 90-day returns is first — return risk is the #1 anxiety per Baymard for furniture vertical, not warranty.",
+          after: [
+            "90-day free return shipping",
+            "5-year structural warranty",
+            "Free assembly video + live chat",
+            "SSL secure",
+            "Visa / Mastercard / PayPal",
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "homepage-restructure",
+    severity: "high",
+    dimension: "Page Optimization",
+    title: "73% of revenue from 8 SKUs — none featured on homepage",
+    reasoning:
+      "Top performers buried below fold. 14 dead-stock SKUs (zero sales / 60d) consume navigation attention. Visitor lands on slow-movers first, bounces before reaching converters.",
+    impact: {
+      crLift: 6.2,
+      revenueLift: 118000,
+      confidence: "high",
+      breakdown: [
+        { source: "Top-performer surface lift", value: 3.4 },
+        { source: "Reduced dead-stock distraction", value: 1.8 },
+        { source: "Category clarity gain", value: 1.0 },
+      ],
+    },
+    fix: {
+      type: "homepage",
+      promoted: ["Pro Chair", "Standing Desk M2", "Lumbar Cushion", "Monitor Arm Dual", "Footrest Pro", "Cable Tray", "Desk Lamp Warm", "Keyboard Tray"],
+      archived: ["Vintage Stool", "Floor Mat Beige", "Plant Stand", "Wire Basket"],
+      kept: ["Accessories Bundle", "Office Starter Kit", "Premium Collection"],
+      refinements: [
+        {
+          trigger: "more conservative · only top 4",
+          agentResponse: "Reduced promoted set to top 4 SKUs. Less disruptive change for risk-averse merchants. Archives stay the same.",
+          promoted: ["Pro Chair", "Standing Desk M2", "Lumbar Cushion", "Monitor Arm Dual"],
+          archived: ["Vintage Stool", "Floor Mat Beige", "Plant Stand", "Wire Basket"],
+        },
+        {
+          trigger: "keep more · don't archive",
+          agentResponse: "Kept dead-stock visible but moved below promoted. Reduces archival risk if merchant has emotional ties to slow SKUs.",
+          promoted: ["Pro Chair", "Standing Desk M2", "Lumbar Cushion", "Monitor Arm Dual", "Footrest Pro", "Cable Tray", "Desk Lamp Warm", "Keyboard Tray"],
+          archived: [],
+        },
+        {
+          trigger: "single hero focus",
+          agentResponse: "Focused homepage on Pro Chair alone (top revenue SKU). Other top performers move to a 'Complete the setup' row below. Risky if Pro Chair sells out.",
+          promoted: ["Pro Chair"],
+          archived: ["Vintage Stool", "Floor Mat Beige", "Plant Stand", "Wire Basket"],
+        },
+      ],
+    },
+  },
+];
 
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+const fmtMoney = (n: number) =>
+  n >= 1000 ? `$${(n / 1000).toFixed(0)}k` : `$${n}`;
+
+const fmtMoneyFull = (n: number) =>
+  `$${n.toLocaleString("en-US")}`;
+
+function useCountUp(target: number, duration = 1200, trigger: unknown = null) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    let start: number | null = null;
+    let frame: number;
+    const animate = (t: number) => {
+      if (start === null) start = t;
+      const elapsed = t - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(target * eased);
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration, trigger]);
+  return value;
+}
+
+// ============================================================================
+// SHARED PRIMITIVES
+// ============================================================================
+
+function Severity({ s }: { s: Issue["severity"] }) {
+  const map = {
+    critical: { label: "critical", cls: "text-coral border-coral/40 bg-coral/5" },
+    high: { label: "high", cls: "text-amber border-amber/40 bg-amber/5" },
+    medium: { label: "medium", cls: "text-neutral-400 border-neutral-600/40 bg-neutral-800/50" },
+  } as const;
+  const m = map[s];
   return (
-    <AppLayout
-      left={
-        <LeftPanel
-          product={product}
-          setProduct={setProduct}
-          status={status}
-          ideaFound={ideaFound}
-          isFindingIdea={isFindingIdea}
-          activeStep={activeStep}
-          completedSteps={completedSteps}
-          onFindIdea={findTrendingProduct}
-          onAnalyze={generateAnalysis}
-          onGenerateStorefront={generateStorefront}
-          onExport={() =>
-            setExportMessage("Draft page exported to Shopify successfully.")
-          }
-        />
-      }
-      right={
-        <RightPanel
-          status={status}
-          completedSteps={completedSteps}
-          selectedPage={selectedPage}
-          setSelectedPage={setSelectedPage}
-          uploadedPreviewImage={uploadedPreviewImage}
-          setUploadedPreviewImage={setUploadedPreviewImage}
-        />
-      }
-      toast={<Toast message={exportMessage} />}
-    />
+    <span className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] font-mono ${m.cls}`}>
+      <span className="w-1 h-1 bg-current rounded-full" />
+      {m.label}
+    </span>
   );
 }
 
-function AppLayout({
-  left,
-  right,
-  toast,
-}: {
-  left: ReactNode;
-  right: ReactNode;
-  toast: ReactNode;
-}) {
-  const [isWorkspaceCollapsed, setIsWorkspaceCollapsed] = useState(false);
-
+function ScoreRing({ value, size = 120 }: { value: number; size?: number }) {
+  const stroke = 8;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const animated = useCountUp(value, 1400);
+  const offset = c - (animated / 100) * c;
+  const color = value >= 70 ? "stroke-forest" : value >= 50 ? "stroke-amber" : "stroke-coral";
   return (
-    <main className="h-screen overflow-hidden bg-[#f5f6f8] text-slate-950">
-      <div className="relative flex h-full">
-        <aside
-          className={[
-            "h-full overflow-x-hidden overflow-y-auto border-r border-slate-200 bg-white transition-[width,min-width,opacity] duration-300 ease-in-out",
-            isWorkspaceCollapsed
-              ? "w-0 min-w-0 border-r-0 opacity-0"
-              : "w-[38%] min-w-[430px] opacity-100",
-          ].join(" ")}
-          aria-hidden={isWorkspaceCollapsed}
-        >
-          {left}
-        </aside>
-        <button
-          type="button"
-          onClick={() => setIsWorkspaceCollapsed((current) => !current)}
-          className={[
-            "absolute top-1/2 z-30 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-lg transition-all duration-300 hover:bg-slate-50",
-            isWorkspaceCollapsed ? "left-4" : "left-[calc(38%_-_22px)]",
-          ].join(" ")}
-          aria-label={
-            isWorkspaceCollapsed
-              ? "Show AI processing workspace"
-              : "Collapse AI processing workspace"
-          }
-          title={
-            isWorkspaceCollapsed
-              ? "Show AI processing workspace"
-              : "Full-screen preview"
-          }
-        >
-          {isWorkspaceCollapsed ? (
-            <ChevronRight size={20} />
-          ) : (
-            <ChevronLeft size={20} />
-          )}
-        </button>
-        <section
-          className={[
-            "h-full overflow-y-auto bg-[#eef1f4] transition-[width] duration-300 ease-in-out",
-            isWorkspaceCollapsed ? "w-full" : "w-[62%]",
-          ].join(" ")}
-        >
-          {right}
-        </section>
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} className="stroke-neutral-800" strokeWidth={stroke} fill="none" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          className={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          strokeLinecap="square"
+          style={{ transition: "stroke-dashoffset 0.05s linear" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center flex-col">
+        <span className="font-display text-4xl leading-none text-ink">{Math.round(animated)}</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mt-1">score</span>
       </div>
-      {toast}
-    </main>
+    </div>
   );
 }
 
-function LeftPanel({
-  product,
-  setProduct,
-  status,
-  ideaFound,
-  isFindingIdea,
-  activeStep,
-  completedSteps,
-  onFindIdea,
-  onAnalyze,
-  onGenerateStorefront,
-  onExport,
-}: {
-  product: Product;
-  setProduct: (product: Product) => void;
-  status: GenerationStatus;
-  ideaFound: boolean;
-  isFindingIdea: boolean;
-  activeStep: number | null;
-  completedSteps: number[];
-  onFindIdea: () => void;
-  onAnalyze: () => void;
-  onGenerateStorefront: () => void;
-  onExport: () => void;
-}) {
-  const hasAnalysis = status === "analysisReady" || status === "complete";
-  const isAnalyzing = status === "analyzing";
-  const isGeneratingStorefront = status === "processing";
+// ============================================================================
+// LANDING
+// ============================================================================
 
+function LandingScreen({ onStart }: { onStart: () => void }) {
   return (
-    <div className="space-y-5 p-6">
-      <header className="space-y-2 border-b border-slate-200 pb-5">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-          <Sparkles size={14} />
-          AI Idea Workspace
+    <div className="min-h-screen flex flex-col grid-bg">
+      <header className="flex items-center justify-between px-10 py-6 border-b border-white/8">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 bg-amber" />
+          <span className="font-mono text-xs uppercase tracking-[0.25em] text-ink">store_auditor / v0.1</span>
         </div>
-        <div>
-          <h1 className="text-3xl font-semibold tracking-normal">
-            AI Store Designer
-          </h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Start from a trending product idea, then generate analysis and a storefront.
-          </p>
+        <div className="flex items-center gap-3 font-mono text-xs text-neutral-500">
+          <span className="w-1.5 h-1.5 rounded-full bg-forest animate-pulse" />
+          <span>system_ready</span>
         </div>
       </header>
 
-      <IdeaDiscoveryCard
-        ideaFound={ideaFound}
-        isFindingIdea={isFindingIdea}
-        onFindIdea={onFindIdea}
-      />
-      {ideaFound && (
-        <ProductInputCard
-          product={product}
-          setProduct={setProduct}
-          isProcessing={isAnalyzing}
-          isAnalysisReady={hasAnalysis}
-          onAnalyze={onAnalyze}
-        />
-      )}
-      {(isAnalyzing || hasAnalysis || isGeneratingStorefront) && (
-        <ProcessingTimeline
-          status={status}
-          activeStep={activeStep}
-          completedSteps={completedSteps}
-        />
-      )}
-      {hasAnalysis && (
-        <>
-          <CompetitorDatasetCard competitors={competitors} />
-          <MarketSignalSummary />
-          <RecommendationCard />
-          <ActionButtons
-            isProcessing={isGeneratingStorefront}
-            canExport={status === "complete"}
-            canGenerateStorefront={status === "analysisReady"}
-            onGenerateStorefront={onGenerateStorefront}
-            onExport={onExport}
-          />
-        </>
-      )}
-    </div>
-  );
-}
-
-function IdeaDiscoveryCard({
-  ideaFound,
-  isFindingIdea,
-  onFindIdea,
-}: {
-  ideaFound: boolean;
-  isFindingIdea: boolean;
-  onFindIdea: () => void;
-}) {
-  return (
-    <Card
-      label="Idea discovery"
-      title="Trending product category"
-      icon={<Sparkles size={16} />}
-    >
-      <div className="space-y-4">
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-normal text-emerald-700">
-                Category
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-950">
-                Home Office Essentials
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Remote workers continue buying ergonomic comfort products that
-                improve daily productivity and home-office setup quality.
-              </p>
-            </div>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-              Trending
-            </span>
+      <main className="flex-1 flex items-center px-10">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-amber">[ AI CRO AGENT ]</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-neutral-500">diagnostic_audit</span>
           </div>
-        </div>
+          <h1 className="font-display text-6xl leading-[0.98] text-ink mb-6">
+            Audit a Shopify store like<br />
+            a $10k/mo CRO agency.<br />
+            <span className="text-amber">In 60 seconds.</span>
+          </h1>
+          <p className="font-body text-lg text-neutral-300 leading-relaxed max-w-2xl mb-12">
+            Five specialist agents analyze market position, catalog strategy, page CRO, trust signals, and ad-funnel coherence — in parallel. Outputs a prioritized fix list with predicted conversion lift per change.
+          </p>
 
-        <button
-          type="button"
-          onClick={onFindIdea}
-          disabled={ideaFound || isFindingIdea}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-default disabled:bg-emerald-500"
-        >
-          {isFindingIdea ? (
-            <Loader2 className="animate-spin" size={16} />
-          ) : ideaFound ? (
-            <Check size={16} />
-          ) : (
-            <Sparkles size={16} />
-          )}
-          {isFindingIdea
-            ? "Finding Trending Product..."
-            : ideaFound
-              ? "Trending Product Found"
-              : "Find Trending Product"}
-        </button>
-
-        {isFindingIdea && (
-          <div className="rounded-lg border border-dashed border-emerald-200 bg-white p-4">
-            <div className="flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-50 text-emerald-700">
-                <Loader2 className="animate-spin" size={16} />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">
-                  AI is scanning product ideas
-                </p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Checking category demand, competitor density, keyword signals,
-                  and pricing opportunities.
-                </p>
-              </div>
+          <div className="border border-white/10 bg-paper-2 p-5 mb-8 max-w-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">› selected_store</span>
+              <span className="font-mono text-[10px] text-neutral-500">{store.url}</span>
+            </div>
+            <div className="flex items-baseline gap-3 mb-4">
+              <span className="font-display text-2xl text-ink">{store.name}</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-amber">[ demo ]</span>
+            </div>
+            <div className="grid grid-cols-4 gap-6 font-mono text-xs border-t border-white/8 pt-4">
+              <Stat label="vertical" value={store.vertical} />
+              <Stat label="skus" value={store.skuCount.toString()} />
+              <Stat label="traffic / mo" value={`${(store.monthlyTraffic / 1000).toFixed(0)}k`} />
+              <Stat label="current CR" value={`${store.currentCR}%`} />
             </div>
           </div>
-        )}
 
-        {ideaFound && (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-                  Product selector
-                </p>
-                <select
-                  value="ErgoFlex Chair"
-                  onChange={() => undefined}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none"
-                >
-                  <option>ErgoFlex Chair</option>
-                </select>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Fixed demo option. Marked trending because competitor signals
-                  show demand for posture support, comfort, productivity, and
-                  accessible pricing.
-                </p>
-              </div>
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-500 text-white">
-                <Check size={15} />
-              </span>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {[
-                "Remote work",
-                "Ergonomics",
-                "Productivity",
-                "Accessible price",
-              ].map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-}
-
-function ProductInputCard({
-  product,
-  setProduct,
-  isProcessing,
-  isAnalysisReady,
-  onAnalyze,
-}: {
-  product: Product;
-  setProduct: (product: Product) => void;
-  isProcessing: boolean;
-  isAnalysisReady: boolean;
-  onAnalyze: () => void;
-}) {
-  return (
-    <Card
-      label="Selected idea"
-      title="Product context"
-      icon={<ShoppingBag size={16} />}
-    >
-      <div className="space-y-4">
-        <Field label="Product Name">
-          <input
-            value={product.name}
-            onChange={(event) =>
-              setProduct({ ...product, name: event.target.value })
-            }
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-          />
-        </Field>
-        <Field label="Product Description">
-          <textarea
-            value={product.description}
-            rows={4}
-            onChange={(event) =>
-              setProduct({ ...product, description: event.target.value })
-            }
-            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-          />
-        </Field>
-        <Field label="Target Market">
-          <input
-            value={product.targetMarket}
-            onChange={(event) =>
-              setProduct({ ...product, targetMarket: event.target.value })
-            }
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-          />
-        </Field>
-        <button
-          type="button"
-          onClick={onAnalyze}
-          disabled={isProcessing || isAnalysisReady}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          {isProcessing ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
-          {isAnalysisReady ? "Analysis Generated" : "Generate Analysis"}
-        </button>
-      </div>
-    </Card>
-  );
-}
-
-function CompetitorDatasetCard({ competitors }: { competitors: Competitor[] }) {
-  return (
-    <Card
-      label="Generated analysis data"
-      title="Competitor signal dataset"
-      icon={<TrendingUp size={16} />}
-    >
-      <div className="space-y-3">
-        {competitors.map((competitor) => (
-          <div
-            key={competitor.name}
-            className="rounded-lg border border-slate-200 bg-slate-50 p-3"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-950">
-                    {competitor.name}
-                  </span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                    {competitor.price}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs leading-5 text-slate-600">
-                  {competitor.positioning}
-                </p>
-              </div>
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-500 text-white">
-                <Check size={14} />
-              </span>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {competitor.keywords.map((keyword) => (
-                <span
-                  key={keyword}
-                  className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200"
-                >
-                  {keyword}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function ProcessingTimeline({
-  status,
-  activeStep,
-  completedSteps,
-}: {
-  status: GenerationStatus;
-  activeStep: number | null;
-  completedSteps: number[];
-}) {
-  const steps = status === "processing" ? storefrontSteps : processingSteps;
-
-  return (
-    <Card
-      label="AI reasoning"
-      title="Generation timeline"
-      icon={<CircleDotDashed size={16} />}
-    >
-      {status === "idle" ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center text-sm font-medium text-slate-500">
-          Ready to generate storefront and analysis
-        </div>
-      ) : (
-        <ol className="space-y-3">
-          {steps.map((step, index) => {
-            const isComplete = completedSteps.includes(index);
-            const isActive = activeStep === index;
-
-            return (
-              <li key={step} className="flex items-center gap-3">
-                <span
-                  className={[
-                    "grid h-7 w-7 shrink-0 place-items-center rounded-full border",
-                    isComplete
-                      ? "border-emerald-500 bg-emerald-500 text-white"
-                      : isActive
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-slate-200 bg-white text-slate-300",
-                  ].join(" ")}
-                >
-                  {isComplete ? (
-                    <Check size={15} />
-                  ) : isActive ? (
-                    <Loader2 className="animate-spin" size={15} />
-                  ) : (
-                    <span className="h-2 w-2 rounded-full bg-current" />
-                  )}
-                </span>
-                <span
-                  className={[
-                    "text-sm",
-                    isComplete || isActive
-                      ? "font-semibold text-slate-900"
-                      : "font-medium text-slate-400",
-                  ].join(" ")}
-                >
-                  {step}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-    </Card>
-  );
-}
-
-function MarketSignalSummary() {
-  return (
-    <Card label="Generated analysis" title="Market signal summary" icon={<Target size={16} />}>
-      <div className="space-y-4 text-sm">
-        <InfoRow label="Selected category" value="Home Office Essentials" />
-        <InfoRow label="Trending product" value="ErgoFlex Chair" />
-        <InfoRow
-          label="Most common keywords"
-          value="ergonomic, comfort, posture, productivity"
-        />
-        <InfoRow label="Average competitor price" value="$37.67" />
-        <InfoRow
-          label="Dominant market angle"
-          value="Comfort + productivity for long workdays"
-        />
-        <div className="rounded-lg bg-emerald-50 p-3 text-emerald-950 ring-1 ring-emerald-100">
-          <p className="text-xs font-semibold uppercase tracking-normal text-emerald-700">
-            Detected opportunity
-          </p>
-          <p className="mt-1 leading-6">
-            Competitors talk about comfort, but few connect posture improvement
-            with productivity. Position ErgoFlex around “work better by sitting
-            better”.
-          </p>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function RecommendationCard() {
-  return (
-    <Card
-      label="AI recommendation"
-      title="Storefront strategy"
-      icon={<BadgeCheck size={16} />}
-    >
-      <div className="space-y-4 text-sm">
-        <InfoRow label="Suggested segment" value="Remote workers aged 25-40" />
-        <InfoRow
-          label="Recommended positioning"
-          value="Improve posture and productivity during long workdays"
-        />
-        <InfoRow
-          label="Suggested differentiator"
-          value="Ergonomic comfort without premium pricing"
-        />
-        <InfoRow label="Confidence" value="High" />
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-            Reasoning
-          </p>
-          <p className="mt-1 leading-6 text-slate-700">
-            2 of 3 competitors focus on comfort. Only 1 competitor strongly owns
-            productivity. Average competitor price is $37.67, so ErgoFlex can
-            position as premium-feeling but accessible.
-          </p>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function ActionButtons({
-  isProcessing,
-  canExport,
-  canGenerateStorefront,
-  onGenerateStorefront,
-  onExport,
-}: {
-  isProcessing: boolean;
-  canExport: boolean;
-  canGenerateStorefront: boolean;
-  onGenerateStorefront: () => void;
-  onExport: () => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-3 pb-4">
-      <button
-        type="button"
-        disabled={isProcessing}
-        onClick={onGenerateStorefront}
-        className={[
-          "flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed",
-          canGenerateStorefront
-            ? "bg-slate-950 text-white hover:bg-slate-800"
-            : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:text-slate-400",
-        ].join(" ")}
-      >
-        {isProcessing ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
-        {canGenerateStorefront ? "Generate Storefront" : "Regenerate Storefront"}
-      </button>
-      <button
-        type="button"
-        disabled={!canExport}
-        onClick={onExport}
-        className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-      >
-        <Download size={16} />
-        Export to Shopify
-      </button>
-    </div>
-  );
-}
-
-function RightPanel({
-  status,
-  completedSteps,
-  selectedPage,
-  setSelectedPage,
-  uploadedPreviewImage,
-  setUploadedPreviewImage,
-}: {
-  status: GenerationStatus;
-  completedSteps: number[];
-  selectedPage: number;
-  setSelectedPage: (index: number) => void;
-  uploadedPreviewImage: string | null;
-  setUploadedPreviewImage: (image: string | null) => void;
-}) {
-  const progress = useMemo(
-    () => {
-      const totalSteps =
-        status === "processing" ? storefrontSteps.length : processingSteps.length;
-      return Math.round((completedSteps.length / totalSteps) * 100);
-    },
-    [completedSteps.length, status],
-  );
-
-  return (
-    <div className="min-h-full p-4 xl:p-5">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-            Live preview
-          </p>
-          <h2 className="text-xl font-semibold text-slate-950">
-            Generated Shopify page
-          </h2>
-        </div>
-        <div className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
-          {status === "complete"
-            ? `${landingPageOptions[selectedPage].name} ready`
-            : status === "processing"
-              ? `${progress}% generated`
-              : status === "analysisReady"
-                ? "Analysis ready"
-                : status === "analyzing"
-                  ? `${progress}% analyzed`
-              : "Waiting for input"}
-        </div>
-      </div>
-      {status !== "idle" && (
-        <LandingPageSelector
-          selectedPage={selectedPage}
-          setSelectedPage={setSelectedPage}
-          disabled={status !== "complete"}
-        />
-      )}
-      <StorePreview
-        status={status}
-        selectedPage={selectedPage}
-        uploadedPreviewImage={uploadedPreviewImage}
-        setUploadedPreviewImage={setUploadedPreviewImage}
-      />
-    </div>
-  );
-}
-
-function LandingPageSelector({
-  selectedPage,
-  setSelectedPage,
-  disabled,
-}: {
-  selectedPage: number;
-  setSelectedPage: (index: number) => void;
-  disabled: boolean;
-}) {
-  const navigateOption = (direction: "prev" | "next") => {
-    setSelectedPage(
-      direction === "next"
-        ? (selectedPage + 1) % landingPageOptions.length
-        : (selectedPage + landingPageOptions.length - 1) %
-            landingPageOptions.length,
-    );
-  };
-
-  return (
-    <div className="mb-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-          {landingPageOptions.map((option, index) => {
-            const isSelected = selectedPage === index;
-
-            return (
-              <button
-                key={option.id}
-                type="button"
-                disabled={disabled}
-                onClick={() => setSelectedPage(index)}
-                className={[
-                  "min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
-                  isSelected
-                    ? "border-slate-950 bg-slate-950 text-white shadow-sm"
-                    : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white",
-                ].join(" ")}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: option.accent }}
-                  />
-                  <span className="truncate text-sm font-semibold">
-                    {option.name}
-                  </span>
-                </div>
-                <p
-                  className={[
-                    "mt-1 truncate text-xs",
-                    isSelected ? "text-white/70" : "text-slate-500",
-                  ].join(" ")}
-                >
-                  {option.label}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex shrink-0 gap-2">
           <button
-            type="button"
-            disabled={disabled}
-            onClick={() => navigateOption("prev")}
-            className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Previous landing page option"
+            onClick={onStart}
+            className="group inline-flex items-center gap-4 bg-amber text-paper px-8 py-3.5 font-mono text-sm uppercase tracking-[0.2em] hover:bg-ink transition-colors"
           >
-            <ArrowLeft size={18} />
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => navigateOption("next")}
-            className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Next landing page option"
-          >
-            <ArrowRight size={18} />
+            <span>Run audit</span>
+            <span className="inline-block group-hover:translate-x-1 transition-transform">→</span>
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function StorePreview({
-  status,
-  selectedPage,
-  uploadedPreviewImage,
-  setUploadedPreviewImage,
-}: {
-  status: GenerationStatus;
-  selectedPage: number;
-  uploadedPreviewImage: string | null;
-  setUploadedPreviewImage: (image: string | null) => void;
-}) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const enableInlineEdit = (element: HTMLElement) => {
-    element.setAttribute("contenteditable", "true");
-    element.setAttribute("spellcheck", "false");
-    element.classList.add("preview-text-editing");
-    element.focus();
-
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-
-    const finishEditing = () => {
-      element.removeAttribute("contenteditable");
-      element.removeAttribute("spellcheck");
-      element.classList.remove("preview-text-editing");
-      element.removeEventListener("blur", finishEditing);
-      element.removeEventListener("keydown", handleKeyDown);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        element.blur();
-      }
-
-      if (event.key === "Escape") {
-        element.blur();
-      }
-    };
-
-    element.addEventListener("blur", finishEditing);
-    element.addEventListener("keydown", handleKeyDown);
-  };
-
-  const handlePreviewClick = (event: MouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-
-    if (target.closest("[data-image-upload-target]")) {
-      event.preventDefault();
-      fileInputRef.current?.click();
-      return;
-    }
-
-    if (target.closest("button,input,textarea,select,option")) {
-      return;
-    }
-
-    const editableTarget = target.closest<HTMLElement>(
-      "h1,h2,h3,h4,p,a,span,strong,em,small,summary,li",
-    );
-
-    if (!editableTarget || editableTarget.isContentEditable) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    enableInlineEdit(editableTarget);
-  };
-
-  const handlePreviewImageUpload = (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setUploadedPreviewImage(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
-    event.target.value = "";
-  };
-
-  if (status === "idle" || status === "analyzing" || status === "analysisReady") {
-    return (
-      <div className="grid min-h-[calc(100vh-112px)] place-items-center rounded-lg border border-dashed border-slate-300 bg-white shadow-sm">
-        <div className="max-w-sm text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-slate-500">
-            <Sparkles size={24} />
-          </div>
-          <p className="mt-4 text-base font-semibold text-slate-800">
-            {status === "analysisReady"
-              ? "Analysis is ready. Generate storefront to preview the page."
-              : "Generated storefront preview will appear here."}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            {status === "analyzing"
-              ? "AI is generating competitor analysis before building the storefront."
-              : "Find the trending ErgoFlex idea, generate analysis, then generate the storefront preview."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === "processing") {
-    return <PreviewSkeleton />;
-  }
-
-  return (
-    <div className="store-preview-shell" onClick={handlePreviewClick}>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handlePreviewImageUpload}
-      />
-      <GeneratedLandingPage
-        option={landingPageOptions[selectedPage]}
-        uploadedPreviewImage={uploadedPreviewImage}
-      />
-    </div>
-  );
-}
-
-function PreviewSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="h-9 bg-slate-950" />
-      <div className="space-y-8 p-8">
-        <div className="grid grid-cols-[1.1fr_0.9fr] gap-8">
-          <div className="space-y-4">
-            <div className="skeleton h-5 w-28 rounded bg-slate-200" />
-            <div className="skeleton h-12 w-3/4 rounded bg-slate-200" />
-            <div className="skeleton h-4 w-full rounded bg-slate-200" />
-            <div className="skeleton h-4 w-4/5 rounded bg-slate-200" />
-            <div className="skeleton h-11 w-36 rounded-lg bg-slate-200" />
-          </div>
-          <div className="skeleton h-72 rounded-lg bg-slate-200" />
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          {[0, 1, 2].map((item) => (
-            <div key={item} className="skeleton h-32 rounded-lg bg-slate-200" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GeneratedLandingPage({
-  option,
-  uploadedPreviewImage,
-}: {
-  option: LandingPageOption;
-  uploadedPreviewImage: string | null;
-}) {
-  if (option.layout === "studio") {
-    return (
-      <PomeloPreview option={option} uploadedPreviewImage={uploadedPreviewImage} />
-    );
-  }
-
-  if (option.layout === "conversion") {
-    return (
-      <MatierePreview
-        option={option}
-        uploadedPreviewImage={uploadedPreviewImage}
-      />
-    );
-  }
-
-  return (
-    <LuxuryEditorialPreview
-      option={option}
-      uploadedPreviewImage={uploadedPreviewImage}
-    />
-  );
-}
-
-function LuxuryEditorialPreview({
-  option,
-  uploadedPreviewImage,
-}: {
-  option: LandingPageOption;
-  uploadedPreviewImage: string | null;
-}) {
-  const products = [
-    ["Lumbar", "$36", "Posture support for long focus sessions.", "Support module"],
-    ["Breath", "$36", "Soft daily comfort with breathable seating.", "Comfort build"],
-    ["Focus", "$36", "A quiet workspace upgrade for deep work.", "Productivity chair"],
-    ["Settle", "$36", "Simple setup for home office routines.", "Home office"],
-    ["Align", "$36", "Designed to improve sitting habits.", "Posture system"],
-    ["Value", "$36", "Premium-feeling comfort without premium pricing.", "Accessible comfort"],
-  ];
-
-  return (
-    <div className="vespre-preview overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="vespre-announcement">
-        <div className="vespre-marquee-track">
-          {[
-            "Free shipping on all home office essentials today",
-            "Generated from competitor market signals",
-            `${option.name} landing page concept`,
-            "Draft ready for Shopify export",
-            "Free shipping on all home office essentials today",
-            "Generated from competitor market signals",
-            `${option.name} landing page concept`,
-            "Draft ready for Shopify export",
-          ].map((item, index) => (
-            <div className="vespre-marquee-item" key={`${item}-${index}`}>
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <nav className="vespre-nav">
-        <div className="vespre-nav-inner">
-          <ul className="vespre-nav-links">
-            <li>
-              <a href="#vespre-benefits">Benefits</a>
-            </li>
-            <li>
-              <a href="#vespre-proof">Proof</a>
-            </li>
-            <li>
-              <a href="#vespre-faq">FAQ</a>
-            </li>
-          </ul>
-          <a href="#vespre-hero" className="vespre-wordmark">
-            ERGOFLEX
-          </a>
-          <div className="vespre-nav-right">
-            <a href="#vespre-proof">Signals</a>
-            <a href="#vespre-faq">Support</a>
-            <a href="#vespre-cart" className="vespre-cart-pill">
-              <span className="vespre-cart-dot" />
-              Bag (1)
-            </a>
-          </div>
-        </div>
-      </nav>
-
-      <section className="vespre-hero" id="vespre-hero">
-        <div className="vespre-hero-inner">
-          <div className="vespre-hero-left">
-            <div className="vespre-hero-eyebrow vespre-eyebrow">
-              AI Generated · {option.label}
-            </div>
-            <h1>
-              A chair for <span>slow</span>
-              <br />
-              posture &amp; quiet
-              <br />
-              focus.
-              <small>
-                Built for remote workers.
-                <br />
-                Designed to make long days feel lighter.
-              </small>
-            </h1>
-            <p className="vespre-hero-body">{option.subheadline}</p>
-            <div className="vespre-hero-cta-row">
-              <a href="#vespre-benefits" className="vespre-btn vespre-btn-primary">
-                {option.cta} <span>→</span>
-              </a>
-              <a href="#vespre-proof" className="vespre-btn vespre-btn-ghost">
-                Read the Signals
-              </a>
-            </div>
-          </div>
-
-          <div className="vespre-hero-feature">
-            <div className="vespre-feature-tag">
-              Featured · <span>{option.name}</span>
-            </div>
-            <LuxuryChairSvg uploadedImage={uploadedPreviewImage} />
-            <div className="vespre-feature-caption">
-              <div>ErgoFlex Chair</div>
-              <span>{option.price} · Home office edition</span>
-            </div>
-          </div>
-        </div>
-        <div className="vespre-scroll-cue">Scroll</div>
-      </section>
-
-      <section className="vespre-statement">
-        <div className="vespre-statement-inner">
-          <div className="vespre-statement-label">
-            AI
-            <br />
-            Insight
-            <span>§</span>
-          </div>
-          <div>
-            <p className="vespre-statement-text">
-              Competitors talk about <em>comfort</em>, but few connect posture
-              improvement with productivity. ErgoFlex owns the more memorable
-              idea: work better by <em>sitting better</em>.
-            </p>
-            <div className="vespre-statement-sig">
-              Generated from ComfortPro, WorkNest and SitWell
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="vespre-collection" id="vespre-benefits">
-        <div className="vespre-section-head">
-          <h2>
-            The <span>{option.name}</span>
-            <br />
-            page system
-          </h2>
-          <p>{option.angle}</p>
-        </div>
-
-        <div className="vespre-featured-strip">
-          {option.benefits.slice(0, 2).map(([title, description], index) => (
-            <a href="#vespre-cart" className="vespre-featured-card" key={title}>
-              <div className={`vespre-featured-visual vespre-fv-${index + 1}`}>
-                <div className="vespre-featured-tag">
-                  {index === 0 ? "Hero benefit" : "Conversion signal"}
-                </div>
-                <div className="vespre-featured-num">0{index + 1}</div>
-                <div className="vespre-featured-visual-inner">
-                  <LuxuryChairSvg compact uploadedImage={uploadedPreviewImage} />
-                </div>
-              </div>
-              <div className="vespre-featured-meta">
-                <div>
-                  <div className="vespre-featured-name">{title}</div>
-                  <div className="vespre-featured-notes">{description}</div>
-                </div>
-                <div className="vespre-featured-price">{option.price}</div>
-              </div>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      <section className="vespre-pullquote">
-        <div className="vespre-pullquote-inner">
-          <div className="vespre-pullquote-mark">"</div>
-          <blockquote>
-            A better chair is not office furniture. It is a way of declaring
-            the workday can feel <em>supported</em>, focused and sustainable.
-          </blockquote>
-          <div className="vespre-pullquote-cite">AI reasoning · Market signal summary</div>
-        </div>
-      </section>
-
-      <section className="vespre-grid-section" id="vespre-proof">
-        <div className="vespre-section-head">
-          <h2>
-            The <span>complete</span>
-            <br />
-            landing story
-          </h2>
-          <p>Every section maps back to a fixed competitor signal.</p>
-        </div>
-
-        <div className="vespre-product-grid">
-          {products.map(([name, price, description, type], index) => (
-            <a href="#vespre-cart" className="vespre-product-card" key={name}>
-              <div className="vespre-product-num">No. 0{index + 1}</div>
-              <div className={`vespre-product-visual vespre-pv-${(index % 6) + 1}`}>
-                <LuxuryChairSvg compact uploadedImage={uploadedPreviewImage} />
-              </div>
-              <div className="vespre-product-info">
-                <div className="vespre-product-name">{name}</div>
-                <div className="vespre-product-price">{price}</div>
-              </div>
-              <p className="vespre-product-desc">{description}</p>
-              <span className="vespre-product-type">{type}</span>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      <section className="vespre-story">
-        <div className="vespre-story-inner">
-          <div className="vespre-story-image">
-            <LuxuryChairSvg uploadedImage={uploadedPreviewImage} />
-            <div className="vespre-story-caption">
-              Built for long days
-              <span>Remote work edition</span>
-            </div>
-          </div>
-          <div className="vespre-story-content">
-            <div className="vespre-eyebrow">Why it works</div>
-            <h2>
-              Founded on <span>comfort</span>
-              <br />
-              and measurable intent.
-            </h2>
-            <p>
-              The generated page positions ErgoFlex between low-cost comfort
-              chairs and premium workspace upgrades. It speaks to practical
-              remote workers who want better posture without overpaying.
-            </p>
-            <p>
-              The page combines the strongest market signals: back pain relief,
-              daily comfort, home-office productivity and accessible value.
-            </p>
-            <div className="vespre-credentials">
-              {[
-                ["3", "Competitors analyzed"],
-                ["$37.67", "Average market price"],
-                ["High", "AI confidence"],
-              ].map(([num, label]) => (
-                <div className="vespre-cred-item" key={label}>
-                  <span>{num}</span>
-                  <p>{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="vespre-journal" id="vespre-faq">
-        <div className="vespre-journal-inner">
-          <div className="vespre-journal-eyebrow vespre-eyebrow">FAQ</div>
-          <h2>
-            Questions before <span>checkout</span>.
-          </h2>
-          <div className="vespre-faq-list">
-            {[
-              "Is ErgoFlex suitable for long workdays?",
-              "Does it help with posture?",
-              "Is it easy to set up?",
-            ].map((question) => (
-              <details key={question}>
-                <summary>{question}</summary>
-                <p>
-                  Yes. ErgoFlex is positioned for home-office routines, daily
-                  support and simple setup.
-                </p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <footer className="vespre-footer" id="vespre-cart">
-        <div className="vespre-footer-top">
-          <div>
-            <div className="vespre-footer-brand">ErgoFlex</div>
-            <p>
-              A conversion-focused Shopify landing page generated from fixed
-              competitor signals and AI recommendations.
-            </p>
-          </div>
-          <div>
-            <h4>Market</h4>
-            <a href="#vespre-proof">Competitor signals</a>
-            <a href="#vespre-benefits">Benefits</a>
-            <a href="#vespre-faq">FAQ</a>
-          </div>
-          <div>
-            <h4>Offer</h4>
-            <a href="#vespre-cart">{option.price}</a>
-            <a href="#vespre-cart">{option.name}</a>
-            <a href="#vespre-cart">Buy Now</a>
-          </div>
-        </div>
-        <div className="vespre-footer-bottom">
-          <span>Draft Shopify page · AI Store Designer</span>
-          <span>✦ ERGOFLEX ✦</span>
-          <span>{option.finalCta}</span>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function LuxuryChairSvg({
-  compact = false,
-  uploadedImage,
-}: {
-  compact?: boolean;
-  uploadedImage?: string | null;
-}) {
-  if (uploadedImage) {
-    return (
-      <img
-        src={uploadedImage}
-        alt="Uploaded product preview"
-        className={compact ? "preview-uploaded-image compact" : "preview-uploaded-image"}
-        data-image-upload-target
-      />
-    );
-  }
-
-  return (
-    <svg
-      className={compact ? "vespre-chair-svg compact" : "vespre-chair-svg"}
-      viewBox="0 0 240 320"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      data-image-upload-target
-    >
-      <defs>
-        <linearGradient id="chairSeat" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#F7F3EA" />
-          <stop offset="55%" stopColor="#D9CFBC" />
-          <stop offset="100%" stopColor="#B5B49A" />
-        </linearGradient>
-        <linearGradient id="chairFrame" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#1C1814" />
-          <stop offset="100%" stopColor="#5C1F1C" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M82 34h76c20 0 34 15 32 35l-13 112c-2 18-16 31-34 31H97c-18 0-32-13-34-31L50 69c-2-20 12-35 32-35Z"
-        fill="url(#chairSeat)"
-        stroke="url(#chairFrame)"
-        strokeWidth="9"
-      />
-      <path
-        d="M76 154h88c24 0 42 18 42 42v8c0 16-13 29-29 29H63c-16 0-29-13-29-29v-8c0-24 18-42 42-42Z"
-        fill="#F2EDE3"
-        stroke="url(#chairFrame)"
-        strokeWidth="9"
-      />
-      <path d="M120 228v58" stroke="url(#chairFrame)" strokeWidth="12" strokeLinecap="round" />
-      <path d="M64 292h112" stroke="url(#chairFrame)" strokeWidth="12" strokeLinecap="round" />
-      <path d="M72 292l-20 18" stroke="url(#chairFrame)" strokeWidth="9" strokeLinecap="round" />
-      <path d="M168 292l20 18" stroke="url(#chairFrame)" strokeWidth="9" strokeLinecap="round" />
-      <path d="M75 72c12-13 78-13 90 0" stroke="#B08A45" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
-      <path d="M70 116c24 11 76 11 100 0" stroke="#7A2A26" strokeWidth="3" strokeLinecap="round" opacity="0.42" />
-    </svg>
-  );
-}
-
-function PomeloPreview({
-  option,
-  uploadedPreviewImage,
-}: {
-  option: LandingPageOption;
-  uploadedPreviewImage: string | null;
-}) {
-  return (
-    <div className="pomelo-preview overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <SunMark className="pomelo-sun-bg" />
-      <div className="pomelo-announcement">
-        <div className="pomelo-announce-track">
-          {[
-            "Free shipping on all home office essentials",
-            "New: AI-generated workspace page",
-            "ErgoFlex Chair · remote-work comfort",
-            "Posture support without premium pricing",
-            "Free shipping on all home office essentials",
-            "New: AI-generated workspace page",
-          ].map((item, index) => (
-            <div className="pomelo-announce-item" key={`${item}-${index}`}>
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <nav className="pomelo-nav">
-        <div className="pomelo-nav-inner">
-          <a className="pomelo-brand" href="#pomelo-hero">
-            <SunMark className="pomelo-brand-icon" />
-            <div className="pomelo-brand-name">
-              ErgoFlex <em>Co.</em>
-            </div>
-          </a>
-          <ul className="pomelo-nav-links">
-            <li><a href="#pomelo-shop">Benefits</a></li>
-            <li><a href="#pomelo-story">Story</a></li>
-            <li><a href="#pomelo-reviews">Reviews</a></li>
-            <li><a href="#pomelo-faq">FAQ</a></li>
-          </ul>
-          <div className="pomelo-nav-right">
-            <a href="#pomelo-shop" className="pomelo-nav-pill">Search</a>
-            <a href="#pomelo-cart" className="pomelo-nav-pill pomelo-nav-cart">
-              Bag <span>1</span>
-            </a>
-          </div>
-        </div>
-      </nav>
-
-      <section className="pomelo-hero" id="pomelo-hero">
-        <div className="pomelo-hero-inner">
-          <div>
-            <div className="pomelo-eyebrow pomelo-hero-eyebrow">
-              Small chair · big workdays
-            </div>
-            <h1>
-              Daily comfort
-              <br />
-              for <em>better</em>
-              <br />
-              <span>work.</span>
-            </h1>
-            <p className="pomelo-hero-body">
-              {option.subheadline} This page leans into approachable value,
-              friendly proof, and practical home-office benefits.
-            </p>
-            <div className="pomelo-hero-cta-row">
-              <a href="#pomelo-shop" className="pomelo-btn">
-                {option.cta} <span>→</span>
-              </a>
-              <a href="#pomelo-story" className="pomelo-btn pomelo-btn-ghost">
-                Meet ErgoFlex
-              </a>
-              <span className="pomelo-hero-tag">8 draft sections ready</span>
-            </div>
-          </div>
-
-          <div className="pomelo-hero-art">
-            <div className="pomelo-hero-sticker">
-              <span>AI PICK</span>
-              {option.name}
-            </div>
-            <SunMark className="pomelo-float-citrus" />
-            <LuxuryChairSvg uploadedImage={uploadedPreviewImage} />
-          </div>
-        </div>
-      </section>
-
-      <section className="pomelo-statement">
-        <div className="pomelo-statement-inner">
-          <div className="pomelo-eyebrow">A small note</div>
-          <p>
-            Competitors make comfort feel generic. This version makes ErgoFlex
-            feel <em>friendly</em>, practical, and easy to buy for a real home
-            office.
-          </p>
-          <div className="pomelo-statement-sig">AI Store Designer</div>
-        </div>
-      </section>
-
-      <section className="pomelo-collection" id="pomelo-shop">
-        <div className="pomelo-collection-head">
-          <div className="pomelo-eyebrow">Generated catalogue</div>
-          <h2>
-            Things that <em>help work</em>.
-          </h2>
-          <p>{option.angle}</p>
-        </div>
-        <div className="pomelo-products">
-          {option.benefits.concat([["Good Value", "Premium-feeling comfort without premium pricing."]]).map(
-            ([title, description], index) => (
-              <a href="#pomelo-cart" className="pomelo-product" key={title}>
-                {index === 0 && <span className="pomelo-product-badge">Best fit</span>}
-                {index === 1 && <span className="pomelo-product-badge new">New</span>}
-                <div className={`pomelo-product-visual pomelo-pv-${index + 1}`}>
-                  <LuxuryChairSvg compact uploadedImage={uploadedPreviewImage} />
-                </div>
-                <div className="pomelo-product-info">
-                  <div className="pomelo-product-name">{title}</div>
-                  <div className="pomelo-product-price">{option.price}</div>
-                </div>
-                <p>{description}</p>
-                <div className="pomelo-product-foot">
-                  <span>Remote work · daily use</span>
-                  <strong>Add +</strong>
-                </div>
-              </a>
-            ),
-          )}
-        </div>
-      </section>
-
-      <section className="pomelo-banner">
-        <div className="pomelo-banner-inner">
-          <div>
-            <div className="pomelo-eyebrow">Value angle</div>
-            <h2>
-              Comfort without the <em>premium chair</em> tax.
-            </h2>
-            <p>
-              Average competitor price is $37.67. ErgoFlex anchors at {option.price}
-              while still feeling polished, supportive, and workday-ready.
-            </p>
-            <a href="#pomelo-cart" className="pomelo-btn">Buy Now →</a>
-          </div>
-          <div className="pomelo-banner-art">
-            <SunMark />
-            <LuxuryChairSvg compact uploadedImage={uploadedPreviewImage} />
-          </div>
-        </div>
-      </section>
-
-      <section className="pomelo-story" id="pomelo-story">
-        <div className="pomelo-story-inner">
-          <div className="pomelo-story-art">
-            <SunMark />
-          </div>
-          <div>
-            <div className="pomelo-eyebrow">Why this layout</div>
-            <h2>
-              Warm, direct, <em>easy</em> to understand.
-            </h2>
-            <p>
-              This template is best for a merchant who wants the product to feel
-              accessible and low-friction. It makes the chair feel approachable,
-              not clinical or luxury.
-            </p>
-            <p>
-              The copy highlights comfort, value, simple setup, and daily remote
-              work habits.
-            </p>
-            <div className="pomelo-story-creds">
-              <div><strong>3</strong><span>competitors</span></div>
-              <div><strong>{option.price}</strong><span>generated price</span></div>
-              <div><strong>High</strong><span>confidence</span></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="pomelo-testimonials" id="pomelo-reviews">
-        <div className="pomelo-testimonials-head">
-          <div>
-            <div className="pomelo-eyebrow">Review signals</div>
-            <h2>
-              Seen, clicked, <em>remembered</em>.
-            </h2>
-          </div>
-          <div>★ ★ ★ ★ ★<span>4.9 · mock review score</span></div>
-        </div>
-        <div className="pomelo-test-grid">
-          {option.chips.slice(0, 3).map((chip, index) => (
-            <div className="pomelo-test" key={chip}>
-              <p>“{chip} is exactly the phrase this page should make shoppers remember.”</p>
-              <div><span>{["R", "M", "A"][index]}</span> Verified signal</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="pomelo-news" id="pomelo-faq">
-        <SunMark />
-        <div className="pomelo-eyebrow">Final CTA</div>
-        <h2>
-          Upgrade your <em>workday</em>.
-        </h2>
-        <p>{option.finalCta}</p>
-        <a href="#pomelo-cart" className="pomelo-btn">Buy Now ✿</a>
-      </section>
-
-      <footer className="pomelo-footer" id="pomelo-cart">
-        <div>
-          <div className="pomelo-footer-mark">
-            <SunMark />
-            <span>ErgoFlex <em>Co.</em></span>
-          </div>
-          <p>Sunny, friendly landing page draft generated from fixed market signals.</p>
-        </div>
-        <div>
-          <h4>Page</h4>
-          <a href="#pomelo-shop">Benefits</a>
-          <a href="#pomelo-story">Story</a>
-          <a href="#pomelo-reviews">Reviews</a>
-        </div>
-        <div>
-          <h4>Offer</h4>
-          <a href="#pomelo-cart">{option.price}</a>
-          <a href="#pomelo-cart">{option.name}</a>
-          <a href="#pomelo-cart">Buy Now</a>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function SunMark({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="50" cy="50" r="28" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="4" strokeLinecap="round">
-        <line x1="50" y1="8" x2="50" y2="22" />
-        <line x1="50" y1="78" x2="50" y2="92" />
-        <line x1="8" y1="50" x2="22" y2="50" />
-        <line x1="78" y1="50" x2="92" y2="50" />
-        <line x1="20" y1="20" x2="30" y2="30" />
-        <line x1="70" y1="70" x2="80" y2="80" />
-        <line x1="80" y1="20" x2="70" y2="30" />
-        <line x1="30" y1="70" x2="20" y2="80" />
-      </g>
-      <circle cx="50" cy="50" r="10" fill="#F9EFDB" />
-    </svg>
-  );
-}
-
-function MatierePreview({
-  option,
-  uploadedPreviewImage,
-}: {
-  option: LandingPageOption;
-  uploadedPreviewImage: string | null;
-}) {
-  const formulas = [
-    ["01 · POSTURE", "Lumbar support 42%, pressure relief 22%, focus retention 18%"],
-    ["02 · COMFORT", "Breathable seat 36%, soft contact 28%, long-day use 21%"],
-    ["03 · SETUP", "Simple assembly 48%, daily routine fit 26%, home office 19%"],
-    ["04 · VALUE", "Accessible pricing 40%, premium feel 31%, conversion lift 16%"],
-    ["05 · FOCUS", "Productivity cue 34%, fewer breaks 24%, deep work 18%"],
-    ["06 · PROOF", "Review signal match 52%, keyword gap 29%, CTA clarity 17%"],
-  ];
-
-  return (
-    <div className="matiere-preview overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="matiere-ticker">
-        <div className="matiere-ticker-track">
-          {[
-            "LIVE · AI Store Designer draft generated",
-            "Competitor matrix: ComfortPro / WorkNest / SitWell",
-            "Average market price: $37.67",
-            "Opportunity: posture + productivity",
-            "LIVE · AI Store Designer draft generated",
-            "Competitor matrix: ComfortPro / WorkNest / SitWell",
-          ].map((item, index) => (
-            <div className="matiere-ticker-item" key={`${item}-${index}`}>
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <nav className="matiere-nav">
-        <div className="matiere-nav-inner">
-          <a className="matiere-brand" href="#matiere-hero">
-            <span>ERGO/FLEX</span>
-            <em>AI PAGE · V.03</em>
-          </a>
-          <ul>
-            <li><a className="active" href="#matiere-formulas">Signals</a></li>
-            <li><a href="#matiere-process">Process</a></li>
-            <li><a href="#matiere-lab">Export</a></li>
-          </ul>
-          <div>
-            <a href="#matiere-lab">EN/US</a>
-            <a href="#matiere-cart" className="matiere-cart">Draft <span>01</span></a>
-          </div>
-        </div>
-      </nav>
-
-      <main>
-        <section className="matiere-hero" id="matiere-hero">
-          <div className="matiere-hero-inner">
-            <div className="matiere-hero-left">
-              <div className="matiere-hero-meta">
-                <div>
-                  <span>SYS / MARKET.SIGNAL</span>
-                  <strong>{option.name.toUpperCase()}</strong>
-                </div>
-                <div>
-                  <span className="pulse">SYNTHESIS COMPLETE</span>
-                  <strong>CONFIDENCE · HIGH</strong>
-                </div>
-              </div>
-              <h1>
-                Conversion
-                <br />
-                <span>architecture</span> for
-                <br />
-                <em>remote</em>
-                <br />
-                work.
-              </h1>
-              <div className="matiere-hero-bottom">
-                <p>
-                  <strong>ErgoFlex</strong> is positioned as ergonomic comfort
-                  without premium pricing. This template exposes the reasoning
-                  like a product spec: direct, analytical, and built for proof.
-                </p>
-                <div>
-                  <a href="#matiere-formulas" className="matiere-btn acid">Browse Signals →</a>
-                  <a href="#matiere-process" className="matiere-btn">Read Matrix</a>
-                </div>
-              </div>
-            </div>
-            <div className="matiere-hero-right">
-              <TechnicalChairSvg uploadedImage={uploadedPreviewImage} />
-            </div>
-          </div>
-        </section>
-
-        <section className="matiere-stats">
-          {[
-            ["3", "Competitors analyzed", "fixed dataset"],
-            ["100%", "Mock data only", "deterministic"],
-            ["$37.67", "Avg. competitor price", "market anchor"],
-            ["High", "Recommendation confidence", "AI reasoning"],
-          ].map(([value, label, sub]) => (
-            <div className="matiere-stat" key={label}>
-              <span>{label}</span>
-              <strong>{value}</strong>
-              <p>{sub}</p>
-            </div>
-          ))}
-        </section>
-
-        <section className="matiere-statement">
-          <div className="matiere-statement-inner">
-            <div>
-              DISCLOSURE NOTE
-              <span>01</span>
-            </div>
-            <div>
-              <p>
-                Most chair pages are built on <s>generic comfort</s> <em>undifferentiated claims</em>.
-                This draft publishes the logic: posture support, productivity
-                ownership, average price, and keyword gaps.
-              </p>
-              <div className="matiere-statement-footer">
-                <div>Input<span>ErgoFlex Chair</span></div>
-                <div>Segment<span>Remote workers 25-40</span></div>
-                <div>Position<span>{option.name}</span></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="matiere-formulas" id="matiere-formulas">
-          <div className="matiere-section-head">
-            <div>
-              <span>SECTION 02 / SIGNAL CATALOGUE</span>
-              <h2>
-                The <mark>signals</mark>
-              </h2>
-            </div>
-            <p>
-              Six generated storefront modules. Each one maps to competitor
-              keywords, review themes, price logic, or CTA positioning.
-            </p>
-          </div>
-
-          <div className="matiere-formula-grid">
-            {formulas.map(([name, description], index) => (
-              <a href="#matiere-cart" className="matiere-formula" key={name}>
-                <div className="matiere-formula-top">
-                  <span>NO. {name}</span>
-                  <span><i />IN DRAFT</span>
-                </div>
-                <div className="matiere-formula-visual">
-                  <TechnicalChairSvg
-                    compact
-                    uploadedImage={uploadedPreviewImage}
-                  />
-                </div>
-                <h3>{name.split(" · ")[1]}</h3>
-                <p>{description}</p>
-                <div className="matiere-formula-data">
-                  <div><span>Type</span><strong>Section</strong></div>
-                  <div><span>CTA</span><strong>{index % 2 ? "Soft" : "Direct"}</strong></div>
-                  <div><span>Use</span><strong>Preview</strong></div>
-                  <div><span>Price</span><strong>{option.price}</strong></div>
-                </div>
-                <div className="matiere-formula-foot">
-                  <strong>{option.price}</strong>
-                  <span>Add →</span>
-                </div>
-              </a>
-            ))}
-          </div>
-        </section>
-
-        <section className="matiere-process" id="matiere-process">
-          <div className="matiere-section-head">
-            <div>
-              <span>SECTION 03 / METHODOLOGY</span>
-              <h2>
-                How it's <mark>made</mark>
-              </h2>
-            </div>
-            <p>{option.angle}</p>
-          </div>
-          <div className="matiere-process-grid">
-            {[
-              ["01", "Read product", "Product description and target market become the source document."],
-              ["02", "Analyze signals", "Competitor price, positioning, keywords and review themes are normalized."],
-              ["03", "Generate sections", "Hero, benefits, comparison, proof, FAQ and CTA are assembled."],
-              ["04", "Export draft", "The mock Shopify export confirms the interview demo journey."],
-            ].map(([num, title, description]) => (
-              <div className="matiere-process-step" key={num}>
-                <span>PHASE / {num}</span>
-                <h3>{title}</h3>
-                <p>{description}</p>
-                <em>Mock only · no backend</em>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="matiere-lab" id="matiere-lab">
-          <span>EXPORT / MOCK</span>
-          <h2>
-            Send the <mark>draft</mark>.
-          </h2>
-          <p>{option.finalCta}. The export button in the left panel triggers the mock Shopify success toast.</p>
-          <a className="matiere-btn acid" href="#matiere-cart">Buy Now →</a>
-        </section>
       </main>
 
-      <footer className="matiere-footer" id="matiere-cart">
-        <div>
-          <div className="matiere-footer-mark">ERGO/FLEX</div>
-          <p>Clinical, proof-led landing page draft generated by AI Store Designer.</p>
+      <footer className="px-10 py-5 border-t border-white/8 flex items-center justify-between font-mono text-xs text-neutral-500">
+        <div className="flex items-center gap-4">
+          <span>5_agents</span>
+          <span className="text-neutral-700">/</span>
+          <span>5_dimensions</span>
+          <span className="text-neutral-700">/</span>
+          <span>36_checks</span>
         </div>
-        <div>
-          <h4>Signals</h4>
-          <a href="#matiere-formulas">Formulas</a>
-          <a href="#matiere-process">Methodology</a>
-          <a href="#matiere-lab">Export</a>
-        </div>
-        <div>
-          <h4>Offer</h4>
-          <a href="#matiere-cart">{option.price}</a>
-          <a href="#matiere-cart">{option.name}</a>
-          <a href="#matiere-cart">Buy Now</a>
-        </div>
+        <span>est_duration · 18s</span>
       </footer>
     </div>
   );
 }
 
-function TechnicalChairSvg({
-  compact = false,
-  uploadedImage,
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 mb-1">{label}</div>
+      <div className="text-ink">{value}</div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ANALYSIS
+// ============================================================================
+
+type AgentState = {
+  thoughtLog: string[];
+  currentThought: string;
+  findings: number;
+  progress: number;
+  status: "queued" | "running" | "done";
+};
+
+function AnalysisScreen({ onComplete }: { onComplete: () => void }) {
+  const initial: Record<string, AgentState> = Object.fromEntries(
+    agents.map(a => [a.id, { thoughtLog: [], currentThought: "", findings: 0, progress: 0, status: "queued" }])
+  );
+  const [state, setState] = useState<Record<string, AgentState>>(initial);
+  const [allDone, setAllDone] = useState(false);
+  const startTime = useRef(Date.now());
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    agents.forEach(agent => {
+      timers.push(setTimeout(() => {
+        setState(s => ({ ...s, [agent.id]: { ...s[agent.id], status: "running" } }));
+      }, agent.startDelay));
+
+      agent.thoughts.forEach((thought, i) => {
+        timers.push(setTimeout(() => {
+          setState(s => ({
+            ...s,
+            [agent.id]: {
+              ...s[agent.id],
+              currentThought: thought.text,
+              thoughtLog: [...s[agent.id].thoughtLog, thought.text],
+              findings: Math.round(((i + 1) / agent.thoughts.length) * agent.findingsCount),
+            }
+          }));
+        }, agent.startDelay + thought.at));
+      });
+
+      timers.push(setTimeout(() => {
+        setState(s => ({
+          ...s,
+          [agent.id]: { ...s[agent.id], status: "done", progress: 100 }
+        }));
+      }, agent.startDelay + agent.duration));
+    });
+
+    timers.push(setTimeout(() => setAllDone(true), ANALYSIS_DURATION + 400));
+
+    const progressInterval = setInterval(() => {
+      const now = Date.now() - startTime.current;
+      setState(s => {
+        const next: Record<string, AgentState> = { ...s };
+        agents.forEach(a => {
+          if (now < a.startDelay) {
+            next[a.id] = { ...next[a.id], progress: 0 };
+          } else if (now > a.startDelay + a.duration) {
+            next[a.id] = { ...next[a.id], progress: 100 };
+          } else {
+            next[a.id] = { ...next[a.id], progress: ((now - a.startDelay) / a.duration) * 100 };
+          }
+        });
+        return next;
+      });
+    }, 60);
+
+    return () => {
+      timers.forEach(t => clearTimeout(t));
+      clearInterval(progressInterval);
+    };
+  }, []);
+
+  const totalFindings = agents.reduce((sum, a) => sum + state[a.id].findings, 0);
+  const overallProgress = agents.reduce((sum, a) => sum + state[a.id].progress, 0) / agents.length;
+
+  const tier1 = agents.filter(a => a.tier === 1);
+  const tier2 = agents.filter(a => a.tier === 2);
+  const tier3 = agents.filter(a => a.tier === 3);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="px-10 py-6 border-b border-ink/10 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-xs uppercase tracking-[0.25em]">auditing · {store.name}</span>
+          <span className="inline-block w-1.5 h-1.5 bg-amber rounded-full animate-pulse" />
+        </div>
+        <div className="font-mono text-xs text-neutral-500">
+          {totalFindings} findings · {Math.round(overallProgress)}% complete
+        </div>
+      </header>
+
+      <main className="flex-1 px-10 py-6 flex flex-col max-w-[1400px] mx-auto w-full">
+        <TierBlock tier={tiers[0]} agents={tier1} state={state} wide />
+        <TierConnector />
+        <TierBlock tier={tiers[1]} agents={tier2} state={state} wide />
+        <TierConnector />
+        <TierBlock tier={tiers[2]} agents={tier3} state={state} />
+
+        <div className="mt-auto pt-6 flex items-center justify-between border-t border-ink/10">
+          <div className="flex items-center gap-3 font-mono text-xs text-neutral-500">
+            <div className="w-64 h-px bg-neutral-800 relative">
+              <div
+                className="absolute top-0 left-0 h-px bg-ink transition-all duration-100"
+                style={{ width: `${overallProgress}%` }}
+              />
+            </div>
+            <span>{Math.round(overallProgress)}%</span>
+          </div>
+
+          {allDone && (
+            <button
+              onClick={onComplete}
+              className="group inline-flex items-center gap-3 bg-ink text-paper px-6 py-3 font-mono text-xs uppercase tracking-[0.2em] hover:bg-amber hover:text-paper transition-colors fade-in"
+            >
+              <span>View audit report</span>
+              <span className="group-hover:translate-x-1 transition-transform">→</span>
+            </button>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function TierBlock({
+  tier,
+  agents,
+  state,
+  wide = false,
 }: {
-  compact?: boolean;
-  uploadedImage?: string | null;
+  tier: Tier;
+  agents: Agent[];
+  state: Record<string, AgentState>;
+  wide?: boolean;
 }) {
-  if (uploadedImage) {
+  const totalProgress = agents.reduce((s, a) => s + state[a.id].progress, 0) / agents.length;
+  const allDone = agents.every(a => state[a.id].status === "done");
+  return (
+    <div className="mb-2">
+      <div className="flex items-baseline justify-between mb-2.5">
+        <div className="flex items-baseline gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-500">
+            layer {String(tier.id).padStart(2, "0")}
+          </span>
+          <span className="font-display text-lg text-ink">{tier.label}</span>
+          <span className="font-mono text-[10px] text-neutral-500">· {tier.description}</span>
+        </div>
+        <div className="flex items-center gap-2 font-mono text-[10px] text-neutral-500">
+          <div className="w-20 h-px bg-neutral-800 relative">
+            <div className="absolute top-0 left-0 h-px bg-ink transition-all duration-100" style={{ width: `${totalProgress}%` }} />
+          </div>
+          <span className={allDone ? "text-forest" : ""}>{allDone ? "done" : `${Math.round(totalProgress)}%`}</span>
+        </div>
+      </div>
+      <div className={wide ? "" : "grid grid-cols-3 gap-4"}>
+        {agents.map(agent => (
+          <AgentPanel key={agent.id} agent={agent} state={state[agent.id]} compact={!wide} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TierConnector() {
+  return (
+    <div className="flex items-center gap-2 my-2 pl-4">
+      <span className="font-mono text-neutral-300 text-sm">↓</span>
+      <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-400">feeds into</span>
+    </div>
+  );
+}
+
+function AgentPanel({ agent, state, compact = false }: { agent: Agent; state: AgentState; compact?: boolean }) {
+  const recent = state.thoughtLog.slice(compact ? -2 : -3);
+  const isFlag = state.currentThought.startsWith("FLAG");
+  const dotColor = state.status === "done" ? "bg-forest" : state.status === "running" ? "bg-amber animate-pulse" : "bg-neutral-700";
+
+  if (compact) {
     return (
-      <img
-        src={uploadedImage}
-        alt="Uploaded product preview"
-        className={compact ? "matiere-uploaded-image compact" : "matiere-uploaded-image"}
-        data-image-upload-target
-      />
+      <div className={`border bg-paper-2 px-4 py-3.5 transition-colors ${isFlag ? "border-coral/40" : "border-ink/10"}`}>
+        <div className="flex items-baseline justify-between mb-1.5">
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-[9px] text-neutral-400">{agent.symbol}</span>
+            <span className="font-display text-base text-ink leading-tight">{agent.name}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+          </div>
+        </div>
+
+        <div className="h-px bg-neutral-800 mb-2.5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 h-px bg-amber transition-all duration-100" style={{ width: `${state.progress}%` }} />
+        </div>
+
+        <div className="flex items-baseline gap-2 mb-2">
+          <span className="font-display text-xl text-ink tabular-nums">{state.findings}</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-500">findings</span>
+        </div>
+
+        <div className="font-mono text-[10px] leading-relaxed min-h-[40px]">
+          {recent.length === 0 ? (
+            <span className="text-neutral-400">waiting…</span>
+          ) : (
+            <div className="space-y-0.5">
+              {recent.slice(0, -1).map((t, i) => (
+                <div key={i} className="text-neutral-400 truncate">{t}</div>
+              ))}
+              <div className={`${isFlag ? "text-coral" : "text-ink"} fade-in-line truncate`} key={state.currentThought}>
+                <span className="text-neutral-400">› </span>{state.currentThought}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     );
   }
 
+  // Wide mode (tier 1 + tier 2): show extra stats based on agent type
   return (
-    <svg
-      className={compact ? "matiere-tech compact" : "matiere-tech"}
-      viewBox="0 0 400 500"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      aria-hidden="true"
-      data-image-upload-target
+    <div className={`border bg-paper-2 px-5 py-4 transition-colors ${isFlag ? "border-coral/40" : "border-ink/10"}`}>
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-3">
+          <div className="flex items-baseline justify-between mb-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-[10px] text-neutral-400">{agent.symbol}</span>
+              <span className="font-display text-xl text-ink">{agent.name}</span>
+            </div>
+          </div>
+          <div className="font-mono text-[10px] text-neutral-400 mb-3">agent / {agent.id}</div>
+
+          <div className="h-px bg-neutral-800 mb-3 relative overflow-hidden">
+            <div className="absolute top-0 left-0 h-px bg-amber transition-all duration-100" style={{ width: `${state.progress}%` }} />
+          </div>
+
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-2xl text-ink tabular-nums">{state.findings}</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-neutral-500">findings</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-500">{state.status}</span>
+          </div>
+        </div>
+
+        <div className="col-span-9 border-l border-ink/10 pl-5">
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-2">thought stream</div>
+          <div className="font-mono text-xs leading-relaxed min-h-[88px]">
+            {recent.length === 0 ? (
+              <span className="text-neutral-400">waiting for trigger…</span>
+            ) : (
+              <div className="space-y-1">
+                {recent.slice(0, -1).map((t, i) => (
+                  <div key={i} className="text-neutral-400">{t}</div>
+                ))}
+                <div className={`${isFlag ? "text-coral" : "text-ink"} fade-in-line`} key={state.currentThought}>
+                  <span className="text-neutral-400">› </span>{state.currentThought}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// AUDIT REPORT
+// ============================================================================
+
+function AuditReportScreen({ onOpenFix }: { onOpenFix: (id: string) => void }) {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="px-10 py-6 border-b border-ink/10 flex items-center justify-between">
+        <div className="flex items-center gap-4 font-mono text-xs uppercase tracking-[0.25em]">
+          <span>audit report</span>
+          <span className="text-neutral-400">·</span>
+          <span className="text-neutral-500">{store.name}</span>
+        </div>
+        <span className="font-mono text-xs text-neutral-500">36 / 36 checks · 5 agents complete</span>
+      </header>
+
+      <main className="flex-1 px-10 py-6 max-w-[1400px] mx-auto w-full">
+        <div className="grid grid-cols-12 gap-8 mb-6">
+          <div className="col-span-3 flex flex-col items-center">
+            <ScoreRing value={audit.scores.overall} size={130} />
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mt-3">
+              ergoflex overall
+            </div>
+          </div>
+
+          <div className="col-span-9">
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-3">
+              dimension breakdown
+            </div>
+            <div className="space-y-2">
+              {audit.scores.dimensions.map((d, i) => (
+                <DimensionBar key={d.key} dimension={d} delay={i * 120} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <MarketContextPanel />
+
+        <div className="mb-6 max-w-5xl border-l-2 border-amber pl-5 fade-in" style={{ animationDelay: "1.4s" }}>
+          <div className="flex items-baseline gap-3 mb-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">synthesis</span>
+            <span className="font-mono text-[10px] text-neutral-500">
+              · est. blended lift ·{" "}
+              <span className="text-forest">+{audit.estimatedBlendedLift.cr}% CR</span>{" "}
+              ·{" "}
+              <span className="text-forest">{fmtMoneyFull(audit.estimatedBlendedLift.revenue)}/yr</span>
+            </span>
+          </div>
+          <p className="font-body text-base leading-relaxed text-neutral-200">{audit.narrative}</p>
+        </div>
+
+        <div>
+          <div className="flex items-baseline justify-between mb-4">
+            <span className="font-display text-2xl text-ink">prioritized_fixes</span>
+            <span className="font-mono text-xs text-neutral-500">{issues.length} issues · ranked by predicted impact</span>
+          </div>
+
+          <div className="space-y-2">
+            {issues.map((issue, i) => (
+              <IssueRow key={issue.id} issue={issue} index={i + 1} onClick={() => onOpenFix(issue.id)} delay={1.6 + i * 0.15} />
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function MarketContextPanel() {
+  const m = audit.marketContext;
+  return (
+    <div className="mb-6 bg-paper-2 border border-white/8 px-5 py-4 fade-in" style={{ animationDelay: "1.0s" }}>
+      <div className="flex items-baseline justify-between mb-3">
+        <div className="flex items-baseline gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-400">market context</span>
+          <span className="font-display text-base text-ink">competitive_landscape</span>
+        </div>
+        <span className="font-mono text-[10px] text-neutral-500">layer.01/research</span>
+      </div>
+
+      <div className="grid grid-cols-12 gap-4 mb-3 pb-3 border-b border-white/8">
+        <div className="col-span-2">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500 mb-0.5">competitors</div>
+          <div className="font-display text-xl text-ink tabular-nums">{m.competitorsIndexed}</div>
+        </div>
+        <div className="col-span-3">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500 mb-0.5">median price</div>
+          <div className="font-display text-xl text-ink tabular-nums">${m.priceMedian}</div>
+          <div className="font-mono text-[9px] text-neutral-500">${m.priceBand.low}–${m.priceBand.high}</div>
+        </div>
+        <div className="col-span-3">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500 mb-0.5">position</div>
+          <div className="font-body text-sm text-coral">{m.pricePosition}</div>
+        </div>
+        <div className="col-span-4">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500 mb-0.5">demand trend</div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-body text-sm text-ink italic">"{m.demandTrend.label}"</span>
+            <span className="font-mono text-xs text-forest">+{m.demandTrend.change}% YoY</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500 mb-1.5">competitor weaknesses</div>
+          <ul className="space-y-0.5">
+            {m.competitorWeaknesses.map(w => (
+              <li key={w} className="font-body text-xs text-neutral-300 flex gap-2">
+                <span className="text-forest">+</span>
+                <span>{w}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500 mb-1.5">unserved demand · catalog gaps</div>
+          <ul className="space-y-0.5">
+            {m.gaps.map(g => (
+              <li key={g.name} className="font-body text-xs text-neutral-300 flex items-baseline justify-between gap-2">
+                <span><span className="text-coral">·</span> {g.name} <span className="text-neutral-500">({g.segment})</span></span>
+                <span className="font-mono text-[11px] text-forest tabular-nums">{fmtMoney(g.projected)}/yr</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DimensionBar({ dimension, delay }: { dimension: { key: string; label: string; value: number }; delay: number }) {
+  const v = useCountUp(dimension.value, 1100);
+  const color = dimension.value >= 70 ? "bg-forest" : dimension.value >= 50 ? "bg-amber" : "bg-coral";
+
+  return (
+    <div className="grid grid-cols-12 items-center gap-4 fade-in" style={{ animationDelay: `${delay}ms` }}>
+      <div className="col-span-3 font-body text-sm text-neutral-300">{dimension.label}</div>
+      <div className="col-span-7 h-1.5 bg-neutral-800 relative overflow-hidden">
+        <div
+          className={`absolute top-0 left-0 h-full ${color} transition-all`}
+          style={{ width: `${v}%`, transitionDuration: "1.1s" }}
+        />
+      </div>
+      <div className="col-span-2 font-mono text-sm tabular-nums text-ink text-right">{Math.round(v)}<span className="text-neutral-400">/100</span></div>
+    </div>
+  );
+}
+
+function IssueRow({ issue, index, onClick, delay }: { issue: Issue; index: number; onClick: () => void; delay: number }) {
+  return (
+    <div
+      className="group bg-paper-2 border border-white/8 hover:border-white/20 px-5 py-4 flex items-start gap-5 fade-in transition-colors"
+      style={{ animationDelay: `${delay}s` }}
     >
-      <line x1="200" y1="0" x2="200" y2="500" strokeDasharray="2 4" opacity="0.3" />
-      <line x1="0" y1="250" x2="400" y2="250" strokeDasharray="2 4" opacity="0.3" />
-      <path d="M130 55h140c28 0 46 22 41 50l-29 170c-4 25-25 43-51 43h-62c-26 0-47-18-51-43L89 105c-5-28 13-50 41-50Z" />
-      <path d="M105 270h190c33 0 58 25 58 58v12c0 24-19 43-43 43H90c-24 0-43-19-43-43v-12c0-33 25-58 58-58Z" />
-      <path d="M200 382v72" strokeWidth="3" />
-      <path d="M112 460h176" strokeWidth="3" />
-      <path d="M125 460l-36 30M275 460l36 30" strokeWidth="2" />
-      <rect x="134" y="300" width="132" height="54" fill="rgba(212, 242, 94, 0.45)" stroke="none" />
-      <text x="200" y="322" textAnchor="middle" fontFamily="JetBrains Mono" fontSize="12" fill="currentColor">
-        ERGOFLEX
-      </text>
-      <text x="200" y="340" textAnchor="middle" fontFamily="JetBrains Mono" fontSize="8" fill="currentColor">
-        POSTURE / PRODUCTIVITY
-      </text>
-      <line x1="270" y1="95" x2="350" y2="95" />
-      <circle cx="270" cy="95" r="3" fill="currentColor" stroke="none" />
-      <text x="355" y="91" fontFamily="JetBrains Mono" fontSize="9" fill="currentColor">
-        A · BACK SUPPORT
-      </text>
-      <line x1="300" y1="300" x2="360" y2="300" />
-      <circle cx="300" cy="300" r="3" fill="currentColor" stroke="none" />
-      <text x="365" y="296" fontFamily="JetBrains Mono" fontSize="9" fill="currentColor">
-        B · COMFORT SEAT
-      </text>
-      <line x1="54" y1="55" x2="54" y2="382" />
-      <text x="42" y="230" fontFamily="JetBrains Mono" fontSize="9" fill="currentColor" transform="rotate(-90 42 230)">
-        LONG DAY SUPPORT
-      </text>
+      <div className="font-mono text-xs text-neutral-500 pt-1 w-6 tabular-nums">{String(index).padStart(2, "0")}</div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Severity s={issue.severity} />
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-neutral-500">{issue.dimension}</span>
+        </div>
+        <div className="font-display text-lg text-ink leading-snug mb-1.5">{issue.title}</div>
+        <div className="font-body text-sm text-neutral-400 leading-relaxed max-w-3xl">{issue.reasoning}</div>
+      </div>
+
+      <div className="flex flex-col items-end gap-0.5 min-w-[110px] pt-1">
+        <div className="font-display text-2xl text-forest tabular-nums leading-none">+{issue.impact.crLift}%</div>
+        <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-500">est. CR lift</div>
+        <div className="font-mono text-xs text-neutral-400 mt-1.5">{fmtMoney(issue.impact.revenueLift)} / yr</div>
+      </div>
+
+      <button
+        onClick={onClick}
+        className="self-center bg-amber text-paper px-5 py-2.5 font-mono text-xs uppercase tracking-[0.18em] hover:bg-ink hover:text-paper transition-colors whitespace-nowrap"
+      >
+        Review change →
+      </button>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// MOCK STOREFRONT — used by fix screens to show actual UI before/after
+// ============================================================================
+
+function ChairSVG({ size = 200 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 200 240" style={{ width: size, height: (size * 240) / 200 }}>
+      {/* shadow */}
+      <ellipse cx="100" cy="225" rx="65" ry="6" fill="#000" opacity="0.08" />
+      {/* backrest */}
+      <path
+        d="M55,28 Q55,12 78,12 L122,12 Q145,12 145,28 L145,135 Q145,142 138,142 L62,142 Q55,142 55,135 Z"
+        fill="#2a5d63"
+      />
+      <path
+        d="M62,28 Q62,20 78,20 L122,20 Q138,20 138,28 L138,128 L62,128 Z"
+        fill="#3a7d83"
+      />
+      {/* lumbar curve */}
+      <path d="M62,75 L138,75" stroke="#1a3f44" strokeWidth="2" />
+      <path d="M62,95 L138,95" stroke="#1a3f44" strokeWidth="2" opacity="0.5" />
+      {/* armrests */}
+      <rect x="38" y="60" width="20" height="48" rx="2" fill="#1a3f44" />
+      <rect x="142" y="60" width="20" height="48" rx="2" fill="#1a3f44" />
+      <rect x="36" y="58" width="24" height="6" rx="2" fill="#2a5d63" />
+      <rect x="140" y="58" width="24" height="6" rx="2" fill="#2a5d63" />
+      {/* seat */}
+      <ellipse cx="100" cy="148" rx="62" ry="14" fill="#1a3f44" />
+      <ellipse cx="100" cy="144" rx="62" ry="14" fill="#2a5d63" />
+      {/* pedestal */}
+      <rect x="94" y="156" width="12" height="48" fill="#666" />
+      {/* base */}
+      <ellipse cx="100" cy="208" rx="62" ry="6" fill="#444" />
+      <path d="M40,208 L160,208" stroke="#333" strokeWidth="2" />
+      {/* wheels */}
+      <circle cx="48" cy="212" r="6" fill="#222" />
+      <circle cx="100" cy="216" r="6" fill="#222" />
+      <circle cx="152" cy="212" r="6" fill="#222" />
     </svg>
   );
 }
 
-function EditorialLandingPage({ option }: { option: LandingPageOption }) {
+function ProductIcon({ kind, color }: { kind: string; color: string }) {
+  const c = color;
+  const stroke = "#0009";
+  const variants: Record<string, JSX.Element> = {
+    chair: (
+      <g>
+        <rect x="8" y="6" width="18" height="14" rx="2" fill={c} />
+        <rect x="10" y="20" width="14" height="2" fill={stroke} />
+        <rect x="12" y="22" width="2" height="8" fill={stroke} />
+        <rect x="20" y="22" width="2" height="8" fill={stroke} />
+      </g>
+    ),
+    desk: (
+      <g>
+        <rect x="4" y="14" width="26" height="3" fill={c} />
+        <rect x="6" y="17" width="2" height="14" fill={stroke} />
+        <rect x="26" y="17" width="2" height="14" fill={stroke} />
+      </g>
+    ),
+    cushion: (
+      <g>
+        <ellipse cx="17" cy="18" rx="12" ry="6" fill={c} />
+        <ellipse cx="17" cy="16" rx="12" ry="6" fill="#3a7d83" />
+      </g>
+    ),
+    monitor: (
+      <g>
+        <rect x="5" y="5" width="22" height="14" rx="1" fill={c} />
+        <rect x="14" y="19" width="4" height="6" fill={stroke} />
+        <rect x="10" y="25" width="12" height="2" fill={stroke} />
+      </g>
+    ),
+    foot: (
+      <g>
+        <rect x="6" y="14" width="20" height="10" rx="3" fill={c} />
+        <rect x="8" y="24" width="3" height="4" fill={stroke} />
+        <rect x="21" y="24" width="3" height="4" fill={stroke} />
+      </g>
+    ),
+    cable: (
+      <g>
+        <rect x="5" y="12" width="22" height="8" rx="1" fill={c} />
+        <circle cx="10" cy="16" r="1.5" fill={stroke} />
+        <circle cx="16" cy="16" r="1.5" fill={stroke} />
+        <circle cx="22" cy="16" r="1.5" fill={stroke} />
+      </g>
+    ),
+    lamp: (
+      <g>
+        <path d="M16 4 L22 12 L10 12 Z" fill={c} />
+        <rect x="15" y="12" width="2" height="14" fill={stroke} />
+        <rect x="10" y="26" width="12" height="2" fill={stroke} />
+      </g>
+    ),
+    keyboard: (
+      <g>
+        <rect x="3" y="12" width="26" height="8" rx="1" fill={c} />
+        <rect x="6" y="14" width="2" height="2" fill={stroke} />
+        <rect x="10" y="14" width="2" height="2" fill={stroke} />
+        <rect x="14" y="14" width="2" height="2" fill={stroke} />
+        <rect x="18" y="14" width="2" height="2" fill={stroke} />
+        <rect x="22" y="14" width="2" height="2" fill={stroke} />
+      </g>
+    ),
+    stool: (
+      <g>
+        <ellipse cx="17" cy="13" rx="10" ry="3" fill={c} />
+        <path d="M9 14 L13 26 M25 14 L21 26 M14 14 L15 26 M20 14 L19 26" stroke={stroke} strokeWidth="1.5" />
+      </g>
+    ),
+    mat: (
+      <g>
+        <rect x="3" y="10" width="26" height="14" rx="1" fill={c} />
+      </g>
+    ),
+    plant: (
+      <g>
+        <path d="M16 6 Q10 10 12 18 Q14 14 16 14 Q18 14 20 18 Q22 10 16 6" fill={c} />
+        <path d="M12 18 L20 18 L19 26 L13 26 Z" fill={stroke} />
+      </g>
+    ),
+    basket: (
+      <g>
+        <path d="M6 14 L26 14 L23 26 L9 26 Z" fill={c} />
+        <path d="M6 14 L26 14" stroke={stroke} strokeWidth="1" />
+        <path d="M11 14 L11 26 M16 14 L16 26 M21 14 L21 26" stroke={stroke} strokeWidth="0.5" />
+      </g>
+    ),
+  };
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div
-        className="px-6 py-2 text-center text-xs font-semibold text-white"
-        style={{ backgroundColor: option.dark }}
-      >
-        Free shipping on all home office essentials today
+    <svg viewBox="0 0 32 32" className="w-full h-full">
+      {variants[kind] || variants.chair}
+    </svg>
+  );
+}
+
+type ProductCard = { name: string; price: string; kind: string; color: string; status?: "dead" | "top" };
+
+const productCards: Record<string, ProductCard> = {
+  "Pro Chair":         { name: "Pro Chair",          price: "$299", kind: "chair",    color: "#2a5d63", status: "top" },
+  "Standing Desk M2":  { name: "Standing Desk M2",   price: "$549", kind: "desk",     color: "#3a4a5a", status: "top" },
+  "Lumbar Cushion":    { name: "Lumbar Cushion",     price: "$49",  kind: "cushion",  color: "#8b3a3a", status: "top" },
+  "Monitor Arm Dual":  { name: "Monitor Arm Dual",   price: "$179", kind: "monitor",  color: "#444",    status: "top" },
+  "Footrest Pro":      { name: "Footrest Pro",       price: "$79",  kind: "foot",     color: "#5a4a3a", status: "top" },
+  "Cable Tray":        { name: "Cable Tray",         price: "$39",  kind: "cable",    color: "#666",    status: "top" },
+  "Desk Lamp Warm":    { name: "Desk Lamp Warm",     price: "$89",  kind: "lamp",     color: "#c87a1a", status: "top" },
+  "Keyboard Tray":     { name: "Keyboard Tray",      price: "$119", kind: "keyboard", color: "#3a4a5a", status: "top" },
+  "Vintage Stool":     { name: "Vintage Stool",      price: "$89",  kind: "stool",    color: "#8b6a4a", status: "dead" },
+  "Floor Mat Beige":   { name: "Floor Mat Beige",    price: "$49",  kind: "mat",      color: "#c8b89a", status: "dead" },
+  "Plant Stand":       { name: "Plant Stand",        price: "$59",  kind: "plant",    color: "#5a7a5a", status: "dead" },
+  "Wire Basket":       { name: "Wire Basket",        price: "$29",  kind: "basket",   color: "#777",    status: "dead" },
+  "Floor Mat":         { name: "Floor Mat",          price: "$49",  kind: "mat",      color: "#c8b89a", status: "dead" },
+  "Footrest":          { name: "Footrest Pro",       price: "$79",  kind: "foot",     color: "#5a4a3a", status: "top" },
+};
+
+function ProductTile({ name, dimmed = false, highlight = "none", small = false }: { name: string; dimmed?: boolean; highlight?: "none" | "promote" | "archive"; small?: boolean }) {
+  const p = productCards[name] || { name, price: "$—", kind: "chair", color: "#888" };
+  const highlightCls =
+    highlight === "promote" ? "ring-2 ring-forest/40 ring-offset-0" :
+    highlight === "archive" ? "opacity-50 grayscale" : "";
+  return (
+    <div className={`relative bg-white border border-neutral-200 transition-all ${highlightCls} ${dimmed ? "opacity-60" : ""}`}>
+      <div className={`bg-neutral-50 ${small ? "h-12" : "h-20"} flex items-center justify-center`}>
+        <div className={small ? "w-6 h-6" : "w-10 h-10"}>
+          <ProductIcon kind={p.kind} color={p.color} />
+        </div>
       </div>
-
-      <section
-        className="relative min-h-[620px] overflow-hidden px-9 py-10 text-white transition-colors duration-500"
-        style={{ backgroundColor: option.bg }}
-      >
-        <GrainOverlay />
-        <div
-          className="pointer-events-none absolute inset-x-0 top-[10%] z-0 flex select-none justify-center whitespace-nowrap text-center font-['Anton'] text-[clamp(88px,13vw,210px)] uppercase leading-none tracking-normal text-white"
-          style={{ opacity: 0.22 }}
-        >
-          {option.ghost}
-        </div>
-        <div className="relative z-10 grid min-h-[540px] grid-cols-[0.92fr_1.08fr] gap-8">
-          <div className="flex flex-col justify-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/85">
-              {option.label}
-            </p>
-            <h3 className="mt-4 max-w-lg text-6xl font-semibold leading-[0.95] tracking-normal text-white">
-              {option.headline}
-            </h3>
-            <p className="mt-5 max-w-xl text-base leading-7 text-white/82">
-              {option.subheadline}
-            </p>
-            <div className="mt-7 flex items-center gap-4">
-              <button
-                className="flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold shadow-sm transition hover:scale-[1.02]"
-                style={{ color: option.dark }}
-              >
-                {option.cta}
-                <ArrowRight size={16} />
-              </button>
-              <span className="max-w-[220px] text-sm font-medium text-white/78">
-                {option.note}
-              </span>
-            </div>
-          </div>
-          <ProductVisual option={option} />
-        </div>
-        <div className="absolute bottom-6 right-8 z-20 flex items-center gap-2 font-['Anton'] text-[clamp(26px,4vw,58px)] uppercase leading-none tracking-normal text-white/95">
-          Discover It
-          <ArrowRight className="h-7 w-7" strokeWidth={2.25} />
-        </div>
-      </section>
-
-      <section className="border-y border-slate-200 bg-[#f8fafc] px-9 py-8">
-        <div className="mb-5 flex items-end justify-between gap-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-              Generated angle
-            </p>
-            <h4 className="mt-1 text-2xl font-semibold text-slate-950">
-              {option.name}
-            </h4>
-          </div>
-          <p className="max-w-md text-sm leading-6 text-slate-600">
-            {option.angle}
-          </p>
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          {option.benefits.map(([title, description]) => (
-            <div
-              key={title}
-              className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <span
-                className="grid h-9 w-9 place-items-center rounded-lg text-white"
-                style={{ backgroundColor: option.accent }}
-              >
-                <CheckCircle2 size={19} />
-              </span>
-              <h4 className="mt-4 text-base font-semibold text-slate-950">
-                {title}
-              </h4>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-9 py-9">
-        <div className="grid grid-cols-[0.82fr_1.18fr] gap-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-              Comparison
-            </p>
-            <h4 className="mt-1 text-2xl font-semibold text-slate-950">
-              Why ErgoFlex stands out
-            </h4>
-          </div>
-          <div className="overflow-hidden rounded-lg border border-slate-200">
-            {option.comparison.map(([label, ergoFlex, competitor]) => (
-              <div
-                key={label}
-                className="grid grid-cols-[0.75fr_1fr_1fr] border-b border-slate-200 last:border-b-0"
-              >
-                <div className="bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700">
-                  {label}
-                </div>
-                <div
-                  className="px-4 py-4 text-sm font-semibold"
-                  style={{ color: option.accent }}
-                >
-                  ErgoFlex: {ergoFlex}
-                </div>
-                <div className="px-4 py-4 text-sm text-slate-600">
-                  Competitors: {competitor}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="px-9 py-9"
-        style={{ backgroundColor: `${option.panel}30` }}
-      >
-        <h4 className="text-2xl font-semibold text-slate-950">
-          Built from what customers already care about
-        </h4>
-        <div className="mt-5 flex flex-wrap gap-2">
-          {option.chips.map((chip) => (
-            <span
-              key={chip}
-              className="rounded-full border bg-white px-3 py-1.5 text-sm font-semibold"
-              style={{ borderColor: `${option.accent}40`, color: option.dark }}
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid grid-cols-[0.8fr_1fr] gap-8 px-9 py-9">
-        <h4 className="text-2xl font-semibold text-slate-950">FAQ</h4>
-        <div className="space-y-3">
-          {[
-            "Is ErgoFlex suitable for long workdays?",
-            "Does it help with posture?",
-            "Is it easy to set up?",
-          ].map((question) => (
-            <details
-              key={question}
-              className="rounded-lg border border-slate-200 px-4 py-3"
-            >
-              <summary className="cursor-pointer text-sm font-semibold text-slate-800">
-                {question}
-              </summary>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Yes. ErgoFlex is designed around daily home-office routines,
-                supportive comfort, and simple setup.
-              </p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className="flex items-center justify-between px-9 py-8 text-white"
-        style={{ backgroundColor: option.dark }}
-      >
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-normal text-white/60">
-            Final CTA
-          </p>
-          <h4 className="mt-2 text-2xl font-semibold">{option.finalCta}</h4>
-        </div>
-        <button
-          className="rounded-lg bg-white px-5 py-3 text-sm font-semibold transition hover:opacity-90"
-          style={{ color: option.dark }}
-        >
-          Buy Now
-        </button>
-      </section>
+      <div className={`${small ? "px-1.5 py-1" : "px-2 py-1.5"} bg-white`}>
+        <div className={`font-body ${small ? "text-[8px]" : "text-[10px]"} text-neutral-900 truncate leading-tight`}>{p.name}</div>
+        <div className={`font-body ${small ? "text-[8px]" : "text-[9px]"} text-neutral-500 leading-tight`}>{p.price}</div>
+      </div>
+      {p.status === "dead" && !small && (
+        <div className="absolute top-0 right-0 bg-coral text-white text-[7px] uppercase tracking-wider px-1 py-0.5">0 sales</div>
+      )}
+      {highlight === "promote" && (
+        <div className="absolute -top-1.5 -right-1.5 bg-forest text-white text-[7px] uppercase tracking-wider px-1 py-0.5">promoted</div>
+      )}
     </div>
   );
 }
 
-function StudioLandingPage({ option }: { option: LandingPageOption }) {
+function StoreChrome({ children, currentPage }: { children: React.ReactNode; currentPage: "pdp" | "home" }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div
-        className="flex items-center justify-between px-7 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white"
-        style={{ backgroundColor: option.dark }}
-      >
-        <span>ErgoFlex Studio</span>
-        <span>Free shipping today</span>
+    <div className="bg-white border border-neutral-300 shadow-sm overflow-hidden">
+      {/* Browser chrome */}
+      <div className="bg-neutral-100 border-b border-neutral-300 px-2 py-1.5 flex items-center gap-1.5">
+        <div className="flex gap-1">
+          <span className="w-2 h-2 rounded-full bg-neutral-300" />
+          <span className="w-2 h-2 rounded-full bg-neutral-300" />
+          <span className="w-2 h-2 rounded-full bg-neutral-300" />
+        </div>
+        <div className="flex-1 bg-white px-2 py-0.5 text-[9px] text-neutral-500 font-mono">
+          ergoflex.shop{currentPage === "pdp" ? "/products/pro-chair" : ""}
+        </div>
+      </div>
+      {/* Store nav */}
+      <div className="bg-white border-b border-neutral-200 px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="font-body font-semibold text-sm tracking-tight text-neutral-900">ErgoFlex</span>
+        </div>
+        <div className="flex items-center gap-3 font-body text-[10px] text-neutral-700">
+          {currentPage === "home" ? (
+            <>
+              <span>Chairs</span><span>Desks</span><span>Accessories</span>
+            </>
+          ) : (
+            <>
+              <span>Shop</span><span>Sale</span><span>About</span>
+            </>
+          )}
+          <span className="text-neutral-400">·</span>
+          <span>🔍</span>
+          <span>👤</span>
+          <span>🛒</span>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ----- Mock PDP -----
+
+type PDPState = "hero-before" | "hero-after" | "trust-before" | "trust-after";
+
+function TrustSignalCard({ signal }: { signal: string }) {
+  // Auto-detect icon from signal text
+  const lower = signal.toLowerCase();
+  const icon =
+    lower.includes("warranty") ? "🛡" :
+    lower.includes("return") || lower.includes("refund") ? "📦" :
+    lower.includes("assembly") ? "🔧" :
+    lower.includes("financing") || lower.includes("apr") ? "💳" :
+    lower.includes("ssl") || lower.includes("secure") ? "🔒" :
+    lower.includes("visa") || lower.includes("paypal") || lower.includes("mastercard") || lower.includes("mc") ? "💰" :
+    "✓";
+
+  // Split at first separator for label/sublabel
+  const splitMatch = signal.match(/^([^·.,—]+)([·.,—]\s*.+)?$/);
+  const label = splitMatch?.[1]?.trim() || signal;
+  const sublabel = splitMatch?.[2]?.replace(/^[·.,—]\s*/, "").trim() || "";
+
+  return (
+    <div className="bg-white border border-neutral-200 px-1.5 py-1">
+      <div className="text-sm mb-0.5 leading-none">{icon}</div>
+      <div className="font-body text-[9px] font-semibold text-neutral-900 leading-tight">{label}</div>
+      {sublabel && <div className="font-body text-[8px] text-neutral-500 leading-tight mt-0.5">{sublabel}</div>}
+    </div>
+  );
+}
+
+function MockPDP({ state, customHeroCopy, customSignals }: { state: PDPState; customHeroCopy?: string; customSignals?: string[] }) {
+  const showAfterHero = state === "hero-after";
+  const showAfterTrust = state === "trust-after";
+  const heroIsFocus = state.startsWith("hero");
+  const trustIsFocus = state.startsWith("trust");
+  const afterHeroText = customHeroCopy ?? "Engineered for back pain relief — ergonomic seating from $299";
+  const trustSignals = customSignals ?? [
+    "5-year structural warranty",
+    "90-day free return shipping",
+    "Free assembly video + live chat",
+  ];
+
+  return (
+    <StoreChrome currentPage="pdp">
+      {/* Breadcrumb */}
+      <div className="px-4 py-1.5 bg-white border-b border-neutral-100 font-body text-[9px] text-neutral-500">
+        Home / Chairs / Pro Chair
       </div>
 
-      <section
-        className="relative grid min-h-[640px] grid-cols-[0.82fr_1.18fr] overflow-hidden text-white"
-        style={{ backgroundColor: option.bg }}
-      >
-        <GrainOverlay />
-        <aside
-          className="relative z-10 flex flex-col justify-between p-9"
-          style={{ backgroundColor: option.dark }}
-        >
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
-              {option.label}
-            </p>
-            <h3 className="mt-5 text-5xl font-semibold leading-none tracking-normal">
-              {option.headline}
-            </h3>
-            <p className="mt-5 text-sm leading-7 text-white/72">
-              {option.subheadline}
-            </p>
+      {/* Product main */}
+      <div className="px-4 py-3 bg-white grid grid-cols-2 gap-3">
+        {/* Image col */}
+        <div className="bg-neutral-50 border border-neutral-200 flex items-center justify-center py-2">
+          <ChairSVG size={130} />
+        </div>
+
+        {/* Info col */}
+        <div className="flex flex-col">
+          {/* Reviews */}
+          <div className="flex items-center gap-1 font-body text-[9px] text-neutral-600 mb-1">
+            <span className="text-amber">★★★★☆</span>
+            <span>247 reviews</span>
           </div>
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-3">
-              {option.comparison.slice(0, 2).map(([label, value]) => (
-                <div key={label} className="border-t border-white/20 pt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-normal text-white/45">
-                    {label}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-white">
-                    {value}
-                  </p>
-                </div>
+
+          {/* Title */}
+          <div className="font-body font-semibold text-sm text-neutral-900 leading-tight mb-1.5">
+            ErgoFlex Pro Chair
+          </div>
+
+          {/* HERO COPY — this is what changes for hero fix */}
+          <div
+            className={`relative ${heroIsFocus ? (showAfterHero ? "bg-forest/5 border border-forest/40" : "bg-coral/5 border border-coral/40") : "border border-transparent"} px-1.5 py-1 mb-2 transition-all`}
+          >
+            <div className={`font-body text-[11px] leading-snug ${heroIsFocus && !showAfterHero ? "text-neutral-700" : "text-neutral-900"}`}>
+              {showAfterHero
+                ? afterHeroText
+                : "Premium ergonomic seating, redefined"}
+            </div>
+            {heroIsFocus && (
+              <div className={`absolute -top-3 right-0 ${showAfterHero ? "bg-forest" : "bg-coral"} text-white text-[7px] uppercase tracking-wider px-1 py-0.5`}>
+                {showAfterHero ? "after" : "before"}
+              </div>
+            )}
+          </div>
+
+          {/* Price */}
+          <div className="flex items-baseline gap-2 mb-2">
+            <span className="font-body font-semibold text-base text-neutral-900">$299</span>
+            <span className="font-body text-[9px] text-neutral-500">Free shipping over $99</span>
+          </div>
+
+          {/* Color picker */}
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="font-body text-[9px] text-neutral-600">Color:</span>
+            <span className="w-3 h-3 rounded-full bg-[#2a5d63] border border-neutral-900/30" />
+            <span className="w-3 h-3 rounded-full bg-neutral-700 border border-neutral-300" />
+            <span className="w-3 h-3 rounded-full bg-neutral-200 border border-neutral-300" />
+          </div>
+
+          {/* CTA */}
+          <button className="bg-neutral-900 text-white py-1.5 font-body text-[10px] uppercase tracking-wider mb-2">
+            Add to Cart
+          </button>
+
+          {/* Always-visible trust strip */}
+          <div className="flex items-center gap-2 text-[8px] text-neutral-500 font-body border-t border-neutral-100 pt-1.5">
+            <span>✓ SSL secure</span>
+            <span className="text-neutral-300">·</span>
+            <span>Visa · MC · PayPal</span>
+          </div>
+        </div>
+      </div>
+
+      {/* TRUST SECTION — only appears in trust-after */}
+      {trustIsFocus && (
+        <div
+          className={`mx-4 my-2 ${showAfterTrust ? "bg-forest/5 border border-forest/40" : "bg-neutral-50 border border-coral/30 border-dashed"} px-3 py-2 relative transition-all`}
+        >
+          <div className={`absolute -top-2 right-2 ${showAfterTrust ? "bg-forest" : "bg-coral"} text-white text-[7px] uppercase tracking-wider px-1 py-0.5`}>
+            {showAfterTrust ? `${trustSignals.length} trust signals added` : "missing trust section"}
+          </div>
+          {showAfterTrust ? (
+            <div className={`grid ${trustSignals.length <= 3 ? "grid-cols-3" : trustSignals.length === 4 ? "grid-cols-4" : trustSignals.length === 5 ? "grid-cols-5" : "grid-cols-6"} gap-1.5 mt-1`}>
+              {trustSignals.map(signal => (
+                <TrustSignalCard key={signal} signal={signal} />
               ))}
             </div>
-            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90">
-              {option.cta}
-              <ArrowRight size={16} />
+          ) : (
+            <div className="text-center py-2 font-body text-[10px] text-neutral-400 italic">
+              no warranty · no return policy · no assembly info
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tabs below */}
+      <div className="px-4 py-1.5 bg-white border-t border-neutral-200 flex gap-3 font-body text-[9px] text-neutral-600">
+        <span className="text-neutral-900 border-b border-neutral-900 pb-0.5">Description</span>
+        <span>Specs</span>
+        <span>Reviews (247)</span>
+      </div>
+      <div className="px-4 py-2 bg-white">
+        <div className="h-1 bg-neutral-100 mb-1 w-full" />
+        <div className="h-1 bg-neutral-100 mb-1 w-11/12" />
+        <div className="h-1 bg-neutral-100 mb-1 w-10/12" />
+        <div className="h-1 bg-neutral-100 w-9/12" />
+      </div>
+    </StoreChrome>
+  );
+}
+
+// ----- Mock Homepage -----
+
+function MockHomepage({ state, customPromoted, customArchived }: { state: "before" | "after"; customPromoted?: string[]; customArchived?: string[] }) {
+  const isAfter = state === "after";
+
+  // Before: 8 products in single grid, with 4 dead-stock prominently above
+  const beforeGrid = ["Vintage Stool", "Floor Mat", "Plant Stand", "Wire Basket", "Pro Chair", "Standing Desk M2", "Lumbar Cushion", "Monitor Arm Dual"];
+
+  // After: derive promoted top + more from customPromoted (or default)
+  const allPromoted = customPromoted ?? ["Pro Chair", "Standing Desk M2", "Lumbar Cushion", "Monitor Arm Dual", "Footrest", "Cable Tray", "Desk Lamp Warm", "Keyboard Tray"];
+  const promotedTop = allPromoted.slice(0, 4);
+  const promotedMore = allPromoted.slice(4);
+  const archivedRow = customArchived ?? ["Vintage Stool", "Floor Mat", "Plant Stand", "Wire Basket"];
+
+  return (
+    <StoreChrome currentPage="home">
+      {/* Hero banner */}
+      <div className={`relative ${isAfter ? "bg-gradient-to-r from-[#2a5d63] to-[#3a7d83]" : "bg-neutral-100"} px-4 py-4 transition-all`}>
+        {isAfter ? (
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-body text-[9px] text-white/80 uppercase tracking-wider mb-0.5">Bestseller</div>
+              <div className="font-body font-semibold text-sm text-white leading-tight">ErgoFlex Pro Chair</div>
+              <div className="font-body text-[10px] text-white/90 mb-1">Engineered for back pain relief — from $299</div>
+              <div className="inline-block bg-white text-neutral-900 px-2 py-0.5 font-body text-[9px] uppercase tracking-wider">Shop now →</div>
+            </div>
+            <div className="opacity-90"><ChairSVG size={90} /></div>
+          </div>
+        ) : (
+          <div className="text-center py-2">
+            <div className="font-body text-base text-neutral-700 mb-0.5">Welcome to ErgoFlex</div>
+            <div className="font-body text-[10px] text-neutral-500">Premium home office furniture</div>
+          </div>
+        )}
+      </div>
+
+      {/* Before: cluttered nav strip with 7 categories */}
+      {!isAfter && (
+        <div className="px-4 py-1.5 bg-neutral-50 border-t border-b border-neutral-200 flex justify-between font-body text-[9px] text-neutral-600">
+          <span>Chairs</span><span>Desks</span><span>Accessories</span>
+          <span>Lighting</span><span>Storage</span><span>Sale</span>
+          <span className="text-coral">+ 14 more</span>
+        </div>
+      )}
+
+      {/* Product grid */}
+      <div className="px-4 py-3 bg-white">
+        {isAfter ? (
+          <>
+            <div className="flex items-baseline justify-between mb-1.5">
+              <div className="font-body font-semibold text-[10px] uppercase tracking-wider text-neutral-900">⭐ Bestsellers</div>
+              <div className="font-body text-[8px] text-neutral-500">73% of revenue</div>
+            </div>
+            <div className={`grid ${promotedTop.length === 1 ? "grid-cols-1" : promotedTop.length === 2 ? "grid-cols-2" : "grid-cols-4"} gap-1.5 mb-3`}>
+              {promotedTop.map(p => (
+                <ProductTile key={p} name={p} highlight="promote" />
+              ))}
+            </div>
+            {promotedMore.length > 0 && (
+              <div className="grid grid-cols-4 gap-1.5 mb-3">
+                {promotedMore.map(p => <ProductTile key={p} name={p} small />)}
+              </div>
+            )}
+
+            {archivedRow.length > 0 ? (
+              <>
+                <div className="flex items-baseline justify-between mb-1.5 pt-2 border-t border-neutral-100">
+                  <div className="font-body font-semibold text-[10px] uppercase tracking-wider text-neutral-500">Clearance</div>
+                  <div className="font-body text-[8px] text-neutral-400">archived</div>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {archivedRow.map(p => <ProductTile key={p} name={p} small dimmed />)}
+                </div>
+              </>
+            ) : (
+              <div className="pt-2 border-t border-neutral-100 font-body text-[8px] text-neutral-500 italic">
+                ↪ all SKUs retained · dead-stock kept visible per merchant preference
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="font-body font-semibold text-[10px] uppercase tracking-wider text-neutral-600 mb-1.5">Our Collection</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {beforeGrid.map((p, i) => (
+                <ProductTile key={p} name={p} highlight={i < 4 && productCards[p]?.status === "dead" ? "archive" : "none"} />
+              ))}
+            </div>
+            <div className="mt-2 font-body text-[8px] text-coral italic">
+              ⚠ 4 dead-stock SKUs above fold · top performers buried below
+            </div>
+          </>
+        )}
+      </div>
+    </StoreChrome>
+  );
+}
+
+// ============================================================================
+// FIX SCREEN
+// ============================================================================
+
+type HistoryEntry = {
+  ts: string;
+  role: "agent" | "you";
+  text: string;
+};
+
+function FixScreen({
+  issue,
+  index,
+  total,
+  onDecide,
+}: {
+  issue: Issue;
+  index: number;
+  total: number;
+  onDecide: (decision: "approve" | "reject") => void;
+}) {
+  // currentIteration: -1 = baseline; 0+ = refinement index
+  const [currentIteration, setCurrentIteration] = useState<number>(-1);
+  const [thinking, setThinking] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const [history, setHistory] = useState<HistoryEntry[]>(() => [
+    { ts: tsNow(), role: "agent", text: getBaselineAgentSummary(issue) },
+  ]);
+
+  // Reset state when issue changes (when navigating between fixes)
+  useEffect(() => {
+    setCurrentIteration(-1);
+    setThinking(false);
+    setCustomInput("");
+    setHistory([{ ts: tsNow(), role: "agent", text: getBaselineAgentSummary(issue) }]);
+  }, [issue.id]);
+
+  const refinements = (issue.fix as any).refinements as Array<{ trigger: string; agentResponse: string }>;
+
+  function applyRefinement(idx: number, triggerLabel?: string) {
+    if (thinking) return;
+    const refinement = refinements[idx];
+    const label = triggerLabel ?? refinement.trigger;
+
+    setHistory(h => [...h, { ts: tsNow(), role: "you", text: label }]);
+    setThinking(true);
+
+    setTimeout(() => {
+      setCurrentIteration(idx);
+      setThinking(false);
+      setHistory(h => [...h, { ts: tsNow(), role: "agent", text: refinement.agentResponse }]);
+    }, 1500);
+  }
+
+  function applyCustomFeedback() {
+    if (thinking || !customInput.trim()) return;
+    // Pick the first refinement that hasn't been used recently, or cycle
+    const lastUsed = currentIteration;
+    const nextIdx = (lastUsed + 1) % refinements.length;
+    applyRefinement(nextIdx, customInput.trim());
+    setCustomInput("");
+  }
+
+  function revertToBaseline() {
+    if (thinking) return;
+    setHistory(h => [...h, { ts: tsNow(), role: "you", text: "revert to initial proposal" }]);
+    setThinking(true);
+    setTimeout(() => {
+      setCurrentIteration(-1);
+      setThinking(false);
+      setHistory(h => [...h, { ts: tsNow(), role: "agent", text: "reverted to initial proposal." }]);
+    }, 800);
+  }
+
+  // Compute current iteration data for mock rendering
+  const iter = currentIteration >= 0 ? refinements[currentIteration] : null;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="px-10 py-5 border-b border-white/8 flex items-center justify-between">
+        <div className="flex items-center gap-4 font-mono text-xs uppercase tracking-[0.25em]">
+          <span className="text-ink">fix_review</span>
+          <span className="text-neutral-500">·</span>
+          <span className="text-neutral-500">{index} of {total}</span>
+          <span className="text-neutral-500">·</span>
+          <span className="text-neutral-500">{issue.dimension}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10px] text-neutral-500">
+            iteration {currentIteration + 1}/{refinements.length + 1}
+          </span>
+          <Severity s={issue.severity} />
+        </div>
+      </header>
+
+      <main className="flex-1 px-10 py-6 max-w-[1400px] mx-auto w-full">
+        {/* Title + reasoning */}
+        <div className="mb-5 max-w-4xl">
+          <h2 className="font-display text-3xl leading-tight text-ink mb-2">{issue.title}</h2>
+          <p className="font-body text-sm text-neutral-300 leading-relaxed">{issue.reasoning}</p>
+        </div>
+
+        {/* Impact bar */}
+        <div className="border-y border-white/8 py-3 mb-5 flex items-center justify-between gap-8">
+          <div className="flex items-baseline gap-8 flex-wrap">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-0.5">est. CR lift</div>
+              <div className="font-display text-2xl text-forest tabular-nums">+{issue.impact.crLift}%</div>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-0.5">est. revenue lift</div>
+              <div className="font-display text-2xl text-ink tabular-nums">{fmtMoney(issue.impact.revenueLift)}<span className="text-sm text-neutral-500"> / yr</span></div>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-0.5">confidence</div>
+              <div className="font-body text-sm text-ink">{issue.impact.confidence}</div>
+            </div>
+            <div className="border-l border-white/10 pl-6">
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-1">breakdown</div>
+              <div className="flex flex-col gap-0.5">
+                {issue.impact.breakdown.map(b => (
+                  <div key={b.source} className="flex items-baseline gap-3 font-mono text-[11px]">
+                    <span className="text-forest tabular-nums w-10">+{b.value}%</span>
+                    <span className="text-neutral-300">{b.source}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Before / After side-by-side mocks */}
+        <div className={`grid grid-cols-2 gap-6 mb-5 transition-opacity ${thinking ? "opacity-60" : "opacity-100"}`}>
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-coral">before</span>
+              <span className="font-mono text-[10px] text-neutral-500">current state</span>
+            </div>
+            {issue.fix.type === "hero" && <MockPDP state="hero-before" />}
+            {issue.fix.type === "trust" && <MockPDP state="trust-before" />}
+            {issue.fix.type === "homepage" && <MockHomepage state="before" />}
+            {issue.fix.type === "prd" && <MockMarketGaps gaps={issue.fix.gaps} />}
+          </div>
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-forest">after</span>
+              <span className="font-mono text-[10px] text-neutral-500">
+                {currentIteration >= 0 ? `iteration ${currentIteration + 2} · ${refinements[currentIteration].trigger}` : "agent-proposed · initial"}
+              </span>
+            </div>
+            {/* render after-mock with optional iter overrides */}
+            {issue.fix.type === "hero" && (
+              <MockPDP state="hero-after" customHeroCopy={iter ? (iter as HeroRefinement).afterCopy : issue.fix.afterCopy} />
+            )}
+            {issue.fix.type === "trust" && (() => {
+              const trustFix = issue.fix;
+              const trustIter = iter as TrustRefinement | null;
+              const signals = (trustIter?.after ?? trustFix.after).filter(s => !trustFix.before.includes(s));
+              return <MockPDP state="trust-after" customSignals={signals} />;
+            })()}
+            {issue.fix.type === "homepage" && (
+              <MockHomepage state="after"
+                customPromoted={iter ? (iter as HomepageRefinement).promoted : issue.fix.promoted}
+                customArchived={iter ? (iter as HomepageRefinement).archived : issue.fix.archived}
+              />
+            )}
+            {issue.fix.type === "prd" && (
+              <MockPRDCandidates candidates={iter ? (iter as PRDRefinement).candidates : issue.fix.candidates} />
+            )}
+          </div>
+        </div>
+
+        {/* FEEDBACK LOOP PANEL */}
+        <FeedbackPanel
+          refinements={refinements}
+          history={history}
+          thinking={thinking}
+          currentIteration={currentIteration}
+          customInput={customInput}
+          setCustomInput={setCustomInput}
+          onRefine={applyRefinement}
+          onCustom={applyCustomFeedback}
+          onRevert={revertToBaseline}
+        />
+
+        {/* Decision bar */}
+        <div className="flex items-center gap-3 border-t border-white/8 pt-5">
+          <button
+            onClick={() => onDecide("approve")}
+            disabled={thinking}
+            className="bg-amber text-paper px-8 py-3 font-mono text-xs uppercase tracking-[0.2em] hover:bg-ink transition-colors disabled:opacity-50"
+          >
+            Approve {currentIteration >= 0 ? `iteration ${currentIteration + 2}` : "fix"} →
+          </button>
+          <button
+            onClick={() => onDecide("reject")}
+            disabled={thinking}
+            className="bg-paper border border-white/15 text-neutral-300 px-8 py-3 font-mono text-xs uppercase tracking-[0.2em] hover:border-coral hover:text-coral transition-colors disabled:opacity-50"
+          >
+            Reject
+          </button>
+          <div className="ml-auto font-mono text-xs text-neutral-500">
+            issue {index} of {total}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function tsNow() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+}
+
+function getBaselineAgentSummary(issue: Issue): string {
+  switch (issue.fix.type) {
+    case "hero":
+      return `proposed: rewrite hero to '${issue.fix.afterCopy}'. restores message-match with active ad creative.`;
+    case "trust":
+      return `proposed: add ${issue.fix.after.length - issue.fix.before.length} new trust signals to PDP. closes 3/5 furniture-vertical anxiety triggers.`;
+    case "homepage":
+      return `proposed: promote ${issue.fix.promoted.length} top SKUs above fold, archive ${issue.fix.archived.length} dead-stock to clearance.`;
+    case "prd":
+      return `proposed: launch ${issue.fix.candidates.length} new SKUs covering identified market gaps. projected $186k/yr net-new revenue.`;
+  }
+}
+
+function FeedbackPanel({
+  refinements,
+  history,
+  thinking,
+  currentIteration,
+  customInput,
+  setCustomInput,
+  onRefine,
+  onCustom,
+  onRevert,
+}: {
+  refinements: Array<{ trigger: string; agentResponse: string }>;
+  history: HistoryEntry[];
+  thinking: boolean;
+  currentIteration: number;
+  customInput: string;
+  setCustomInput: (s: string) => void;
+  onRefine: (idx: number) => void;
+  onCustom: () => void;
+  onRevert: () => void;
+}) {
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (historyRef.current) {
+      historyRef.current.scrollTop = historyRef.current.scrollHeight;
+    }
+  }, [history, thinking]);
+
+  return (
+    <div className="border border-amber/30 bg-paper-2 mb-5 relative">
+      <div className="absolute -top-2.5 left-4 bg-paper px-2 flex items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-amber">[ refine ]</span>
+        <span className="font-mono text-[10px] text-neutral-500">agent_feedback_loop</span>
+        {thinking && (
+          <span className="font-mono text-[10px] text-amber flex items-center gap-1.5 pulse-glow ml-1 px-1.5">
+            <span className="w-1 h-1 rounded-full bg-amber animate-pulse" />
+            thinking
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-12 gap-0 pt-4">
+        {/* Left: refinement chips + custom input */}
+        <div className="col-span-7 px-5 pb-4 border-r border-white/8">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-neutral-500 mb-2">› quick refinements</div>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {refinements.map((r, i) => {
+              const isActive = i === currentIteration;
+              return (
+                <button
+                  key={i}
+                  disabled={thinking || isActive}
+                  onClick={() => onRefine(i)}
+                  className={`border px-3 py-1.5 font-mono text-[11px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isActive
+                      ? "border-amber bg-amber/10 text-amber"
+                      : "border-white/15 hover:border-amber text-neutral-300 hover:text-amber"
+                  }`}
+                >
+                  {isActive ? "✓ " : ""}{r.trigger}
+                </button>
+              );
+            })}
+            {currentIteration >= 0 && (
+              <button
+                onClick={onRevert}
+                disabled={thinking}
+                className="font-mono text-[11px] text-neutral-500 hover:text-ink px-2 py-1.5 disabled:opacity-50"
+              >
+                ↺ revert to initial
+              </button>
+            )}
+          </div>
+
+          <div className="border border-white/15 bg-paper px-3 py-2 flex items-center gap-2">
+            <span className="text-amber font-mono text-xs">›</span>
+            <input
+              disabled={thinking}
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") onCustom(); }}
+              type="text"
+              placeholder="or type custom feedback..."
+              className="flex-1 bg-transparent border-none outline-none font-body text-sm text-ink placeholder:text-neutral-600 disabled:opacity-50"
+            />
+            <button
+              onClick={onCustom}
+              disabled={thinking || !customInput.trim()}
+              className="font-mono text-[10px] uppercase tracking-[0.15em] text-neutral-500 hover:text-amber px-2 py-0.5 disabled:opacity-30"
+            >
+              send →
             </button>
           </div>
-        </aside>
-
-        <div className="relative z-10 flex flex-col justify-between p-9">
-          <div className="flex justify-end">
-            <div className="max-w-[230px] rounded-lg border border-white/25 bg-white/12 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-normal text-white/60">
-                Market angle
-              </p>
-              <p className="mt-2 text-sm leading-6 text-white/90">
-                {option.angle}
-              </p>
-            </div>
-          </div>
-          <div className="absolute inset-x-0 top-[12%] text-center font-['Anton'] text-[clamp(92px,14vw,220px)] uppercase leading-none tracking-normal text-white/20">
-            {option.ghost}
-          </div>
-          <div className="relative mx-auto mt-8 w-[72%] min-w-[360px]">
-            <ProductVisual option={option} variant="studio" />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {option.benefits.map(([title, description]) => (
-              <div
-                key={title}
-                className="rounded-lg border border-white/25 bg-white/14 p-4 backdrop-blur"
-              >
-                <p className="text-sm font-semibold">{title}</p>
-                <p className="mt-2 text-xs leading-5 text-white/72">
-                  {description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-[1fr_1fr] gap-0">
-        <div className="p-9">
-          <h4 className="text-2xl font-semibold text-slate-950">
-            Built from what customers already care about
-          </h4>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {option.chips.map((chip) => (
-              <span
-                key={chip}
-                className="rounded-full border px-3 py-1.5 text-sm font-semibold"
-                style={{
-                  borderColor: `${option.accent}35`,
-                  color: option.dark,
-                  backgroundColor: `${option.panel}20`,
-                }}
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="border-l border-slate-200 bg-slate-50 p-9">
-          <h4 className="text-2xl font-semibold text-slate-950">
-            Why ErgoFlex stands out
-          </h4>
-          <div className="mt-5 space-y-3">
-            {option.comparison.map(([label, ergoFlex, competitor]) => (
-              <div key={label} className="rounded-lg bg-white p-4 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-                  {label}
-                </p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: option.accent }}>
-                  ErgoFlex: {ergoFlex}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  Competitors: {competitor}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <FinalCta option={option} />
-    </div>
-  );
-}
-
-function ConversionLandingPage({ option }: { option: LandingPageOption }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div
-        className="px-6 py-2 text-center text-xs font-bold uppercase tracking-[0.14em] text-white"
-        style={{ backgroundColor: option.accent }}
-      >
-        Free shipping on all home office essentials today
-      </div>
-
-      <section className="grid min-h-[610px] grid-cols-[1fr_0.9fr] bg-[#fffaf7]">
-        <div className="flex flex-col justify-between p-9">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-normal shadow-sm ring-1 ring-orange-100">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: option.accent }}
-              />
-              {option.label}
-            </div>
-            <h3 className="mt-5 max-w-xl text-6xl font-semibold leading-[0.95] tracking-normal text-slate-950">
-              {option.headline}
-            </h3>
-            <p className="mt-5 max-w-xl text-base leading-7 text-slate-600">
-              {option.subheadline}
-            </p>
-            <div className="mt-7 flex items-center gap-3">
-              <button
-                className="flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:scale-[1.02]"
-                style={{ backgroundColor: option.dark }}
-              >
-                {option.cta}
-                <ArrowRight size={16} />
-              </button>
-              <div className="rounded-lg bg-white px-4 py-2 shadow-sm ring-1 ring-orange-100">
-                <p className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">
-                  Generated price
-                </p>
-                <p className="text-lg font-bold" style={{ color: option.accent }}>
-                  {option.price}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            {option.benefits.map(([title, description]) => (
-              <div key={title} className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-orange-100">
-                <p className="text-sm font-semibold text-slate-950">{title}</p>
-                <p className="mt-2 text-xs leading-5 text-slate-600">{description}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div
-          className="relative overflow-hidden p-8"
-          style={{ backgroundColor: option.bg }}
-        >
-          <GrainOverlay />
-          <div className="absolute inset-x-0 top-12 text-center font-['Anton'] text-[clamp(80px,11vw,165px)] uppercase leading-none tracking-normal text-white/24">
-            {option.ghost}
-          </div>
-          <ProductVisual option={option} variant="conversion" />
-          <div className="absolute bottom-8 left-8 right-8 rounded-lg bg-white/92 p-4 shadow-xl backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-              Detected opportunity
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              {option.angle}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-[0.9fr_1.1fr] border-y border-slate-200">
-        <div className="bg-slate-950 p-9 text-white">
-          <p className="text-xs font-semibold uppercase tracking-normal text-white/50">
-            Review insights
-          </p>
-          <h4 className="mt-2 text-2xl font-semibold">
-            Customers already care about these signals
-          </h4>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {option.chips.map((chip) => (
-              <span key={chip} className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold">
-                {chip}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="p-9">
-          <h4 className="text-2xl font-semibold text-slate-950">
-            Direct comparison
-          </h4>
-          <div className="mt-5 grid gap-3">
-            {option.comparison.map(([label, ergoFlex, competitor]) => (
-              <div key={label} className="grid grid-cols-[0.75fr_1fr_1fr] rounded-lg border border-slate-200 bg-white">
-                <div className="px-4 py-4 text-sm font-semibold text-slate-700">
-                  {label}
-                </div>
-                <div className="px-4 py-4 text-sm font-semibold" style={{ color: option.accent }}>
-                  {ergoFlex}
-                </div>
-                <div className="px-4 py-4 text-sm text-slate-600">
-                  {competitor}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <FaqSection />
-      <FinalCta option={option} />
-    </div>
-  );
-}
-
-function GrainOverlay() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-20 opacity-40"
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E\")",
-        backgroundRepeat: "repeat",
-        backgroundSize: "200px 200px",
-      }}
-    />
-  );
-}
-
-function FaqSection() {
-  return (
-    <section className="grid grid-cols-[0.8fr_1fr] gap-8 px-9 py-9">
-      <h4 className="text-2xl font-semibold text-slate-950">FAQ</h4>
-      <div className="space-y-3">
-        {[
-          "Is ErgoFlex suitable for long workdays?",
-          "Does it help with posture?",
-          "Is it easy to set up?",
-        ].map((question) => (
-          <details
-            key={question}
-            className="rounded-lg border border-slate-200 px-4 py-3"
+        {/* Right: history */}
+        <div className="col-span-5 px-5 pb-4">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-neutral-500 mb-2">› conversation_log</div>
+          <div
+            ref={historyRef}
+            className="bg-paper border border-white/8 max-h-[160px] overflow-y-auto"
           >
-            <summary className="cursor-pointer text-sm font-semibold text-slate-800">
-              {question}
-            </summary>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Yes. ErgoFlex is designed around daily home-office routines,
-              supportive comfort, and simple setup.
-            </p>
-          </details>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function FinalCta({ option }: { option: LandingPageOption }) {
-  return (
-    <section
-      className="flex items-center justify-between px-9 py-8 text-white"
-      style={{ backgroundColor: option.dark }}
-    >
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-normal text-white/60">
-          Final CTA
-        </p>
-        <h4 className="mt-2 text-2xl font-semibold">{option.finalCta}</h4>
-      </div>
-      <button
-        className="rounded-lg bg-white px-5 py-3 text-sm font-semibold transition hover:opacity-90"
-        style={{ color: option.dark }}
-      >
-        Buy Now
-      </button>
-    </section>
-  );
-}
-
-function ProductVisual({
-  option,
-  variant = "editorial",
-}: {
-  option: LandingPageOption;
-  variant?: "editorial" | "studio" | "conversion";
-}) {
-  const shellClass =
-    variant === "studio"
-      ? "relative flex h-[430px] items-end justify-center overflow-hidden pb-0"
-      : variant === "conversion"
-        ? "relative flex h-full min-h-[560px] items-end justify-center overflow-hidden pb-20"
-        : "relative flex items-end justify-center overflow-hidden pb-8";
-  const chairClass =
-    variant === "studio"
-      ? "relative z-10 h-[430px] w-[310px]"
-      : "relative z-10 h-[500px] w-[360px]";
-
-  return (
-    <div className={shellClass}>
-      <div
-        className="absolute bottom-9 left-1/2 h-[58%] w-[76%] -translate-x-1/2 rounded-[40px]"
-        style={{ backgroundColor: option.panel, opacity: 0.9 }}
-      />
-      <div className="absolute left-[18%] top-[21%] h-24 w-24 rounded-full bg-white/18 blur-2xl" />
-      <div className="absolute right-[16%] top-[13%] h-32 w-32 rounded-full bg-white/14 blur-3xl" />
-      <div className={chairClass}>
-        <div
-          className="absolute left-1/2 top-3 h-[255px] w-[230px] -translate-x-1/2 rounded-[54px] border-[10px] bg-white shadow-2xl"
-          style={{ borderColor: option.dark }}
-        />
-        <div
-          className="absolute left-1/2 top-[210px] h-[110px] w-[285px] -translate-x-1/2 rounded-[48px] border-[10px] bg-white shadow-2xl"
-          style={{ borderColor: option.dark }}
-        />
-        <div
-          className="absolute left-1/2 top-[300px] h-[118px] w-8 -translate-x-1/2 rounded-full"
-          style={{ backgroundColor: option.dark }}
-        />
-        <div
-          className="absolute bottom-[62px] left-1/2 h-8 w-[230px] -translate-x-1/2 rounded-full"
-          style={{ backgroundColor: option.dark }}
-        />
-        <div
-          className="absolute bottom-9 left-[78px] h-14 w-5 rotate-12 rounded-full"
-          style={{ backgroundColor: option.dark }}
-        />
-        <div
-          className="absolute bottom-9 right-[78px] h-14 w-5 -rotate-12 rounded-full"
-          style={{ backgroundColor: option.dark }}
-        />
-        <div
-          className="absolute right-8 top-12 rounded-full bg-white/90 px-4 py-2 text-sm font-bold shadow-lg"
-          style={{ color: option.dark }}
-        >
-          {option.price}
+            {history.map((h, i) => (
+              <HistoryRow key={i} entry={h} />
+            ))}
+            {thinking && (
+              <div className="px-3 py-2 font-mono text-[11px] text-amber flex items-center gap-2 border-t border-white/5">
+                <span className="w-1 h-1 rounded-full bg-amber animate-pulse" />
+                <span>agent is iterating...</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Card({
-  label,
-  title,
-  icon,
-  children,
-}: {
-  label: string;
-  title: string;
-  icon: ReactNode;
-  children: ReactNode;
-}) {
+function HistoryRow({ entry }: { entry: HistoryEntry }) {
+  const isAgent = entry.role === "agent";
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-            {label}
-          </p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-950">{title}</h2>
-        </div>
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600">
-          {icon}
+    <div className={`px-3 py-1.5 border-b border-white/5 last:border-b-0 ${isAgent ? "bg-amber/[0.03]" : ""}`}>
+      <div className="flex items-baseline gap-2 mb-0.5">
+        <span className="font-mono text-[9px] text-neutral-500 tabular-nums">{entry.ts}</span>
+        <span className={`font-mono text-[9px] uppercase tracking-wider ${isAgent ? "text-amber" : "text-electric"}`}>
+          {isAgent ? "agent" : "you"}
         </span>
       </div>
-      {children}
-    </section>
+      <div className="font-body text-xs text-neutral-300 leading-relaxed">{entry.text}</div>
+    </div>
   );
 }
 
-function Field({
-  label,
-  children,
+function HeroReasoning() {
+  return (
+    <div className="font-body text-sm text-neutral-300 leading-relaxed space-y-2 max-w-4xl">
+      <p>· Active ad headline reads <span className="font-mono text-ink">"back pain relief from $299"</span>. Visitor expects pain framing within 2 seconds of landing.</p>
+      <p>· Original hero pivots to luxury framing — cognitive mismatch increases bounce on paid traffic. Estimated 30%+ bounce lift on the highest-spend audience.</p>
+      <p>· Proposed hero restores message-match, surfaces price anchor ($299) above the fold, and retains "ergonomic" as secondary benefit.</p>
+    </div>
+  );
+}
+
+function TrustReasoning() {
+  return (
+    <div className="font-body text-sm text-neutral-300 leading-relaxed space-y-2 max-w-4xl">
+      <p>· Furniture buyers exhibit high purchase anxiety. Five trust signals are standard for the vertical (Baymard benchmark).</p>
+      <p>· Three missing signals each map to a distinct anxiety: warranty (long-term durability), return policy (purchase risk), assembly support (post-purchase friction).</p>
+      <p>· Each resolved trigger compounds incrementally — full stack closes the gap to category benchmark.</p>
+    </div>
+  );
+}
+
+function HomepageReasoning() {
+  return (
+    <div className="font-body text-sm text-neutral-300 leading-relaxed space-y-2 max-w-4xl">
+      <p>· Catalog revenue distribution is steep — 8 SKUs drive 73% of revenue. Surface ratio (homepage placement / revenue contribution) is inverted.</p>
+      <p>· 14 SKUs show zero sales in 60 days. Each consumes navigation attention, slot inventory, and category browse time without contributing.</p>
+      <p>· Proposed restructure: promote top 8 to dedicated bestsellers row, archive dead-stock to clearance, reduce primary navigation to 3 categories.</p>
+    </div>
+  );
+}
+
+function PRDReasoning() {
+  return (
+    <div className="font-body text-sm text-neutral-300 leading-relaxed space-y-2 max-w-4xl">
+      <p>· Market research surfaced 3 distinct demand pockets where ErgoFlex has no SKU. Each pocket has competitor presence (signal: real money flowing).</p>
+      <p>· Two of three candidates are bundle/variant plays — minimal manufacturing risk vs new product line. Standing Mat Pro is the largest TAM but requires new supplier.</p>
+      <p>· Projected revenue is conservative · assumes 30% capture rate of unserved demand + cross-sell uplift on existing 84k monthly traffic.</p>
+      <p>· Each candidate ships as a PRD draft (not auto-launch). Approve here generates PRD doc for product team review.</p>
+    </div>
+  );
+}
+
+function MockMarketGaps({ gaps }: { gaps: { name: string; segment: string; competitorCount: number }[] }) {
+  return (
+    <div className="bg-white border border-neutral-300 shadow-sm overflow-hidden">
+      <div className="bg-neutral-100 border-b border-neutral-300 px-3 py-2">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500">ergoflex catalog · gap analysis</div>
+        <div className="font-body text-xs text-neutral-700 mt-0.5">47 SKUs · 3 high-demand categories unserved</div>
+      </div>
+
+      <div className="px-3 py-3 space-y-2 bg-neutral-50">
+        {gaps.map((g, i) => (
+          <div key={g.name} className="bg-white border-2 border-dashed border-coral/40 px-3 py-2.5 relative">
+            <div className="absolute -top-1.5 right-2 bg-coral text-white text-[8px] uppercase tracking-wider px-1 py-0.5">
+              gap · no SKU
+            </div>
+            <div className="flex items-baseline justify-between mb-1">
+              <div className="font-body font-semibold text-xs text-neutral-900">{g.name}</div>
+              <div className="font-mono text-[9px] text-neutral-500">{g.segment}</div>
+            </div>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <div className="font-mono text-[9px] text-neutral-600">competitors filling this:</div>
+              <div className="flex gap-0.5">
+                {Array.from({ length: g.competitorCount }).map((_, j) => (
+                  <span key={j} className="inline-block w-1.5 h-3 bg-coral/40" />
+                ))}
+              </div>
+              <div className="font-mono text-[9px] text-coral">{g.competitorCount} / 12</div>
+            </div>
+            <div className="font-mono text-[8px] text-neutral-500 italic mt-1">— traffic flowing to competitors —</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-3 py-2 bg-neutral-50 border-t border-neutral-200 font-mono text-[9px] text-neutral-500">
+        ⚠ catalog cannot absorb organic demand for these queries
+      </div>
+    </div>
+  );
+}
+
+function MockPRDCandidates({ candidates }: { candidates: PRDCandidate[] }) {
+  return (
+    <div className="bg-white border border-neutral-300 shadow-sm overflow-hidden">
+      <div className="bg-forest/5 border-b border-forest/30 px-3 py-2">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-forest">proposed catalog expansion · 3 PRDs</div>
+        <div className="font-body text-xs text-neutral-700 mt-0.5">47 → 50 SKUs · estimated +$186k/yr new revenue</div>
+      </div>
+
+      <div className="px-3 py-3 space-y-2 bg-white">
+        {candidates.map(c => (
+          <div key={c.name} className="border border-forest/30 bg-forest/5 px-2.5 py-2 relative">
+            <div className="absolute -top-1.5 right-2 bg-forest text-white text-[8px] uppercase tracking-wider px-1 py-0.5">
+              new SKU · PRD draft
+            </div>
+            <div className="grid grid-cols-12 gap-2 items-start">
+              <div className="col-span-2 bg-white border border-neutral-200">
+                <div className="bg-neutral-50 h-14 flex items-center justify-center">
+                  <div className="w-8 h-8"><ProductIcon kind={c.kind} color="#2a5d63" /></div>
+                </div>
+              </div>
+              <div className="col-span-7">
+                <div className="font-body font-semibold text-xs text-neutral-900 mb-0.5">{c.name}</div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="font-body text-xs font-semibold text-ink">{c.targetPrice}</span>
+                  <span className="inline-block bg-amber/15 text-amber px-1 py-0 font-mono text-[8px] uppercase tracking-wider">{c.marketSignal}</span>
+                </div>
+                <div className="font-body text-[10px] text-neutral-600 leading-snug">{c.reasoning}</div>
+              </div>
+              <div className="col-span-3 border-l border-forest/20 pl-2">
+                <div className="font-mono text-[8px] uppercase tracking-wider text-neutral-500">projected yr 1</div>
+                <div className="font-display text-base text-forest tabular-nums">{fmtMoney(c.projectedRevenue)}</div>
+                <div className="font-mono text-[8px] text-neutral-500 mt-1">launch · q+1</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-3 py-2 bg-neutral-50 border-t border-neutral-200 font-mono text-[9px] text-neutral-500">
+        approve → generate PRD docs for product team review
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// IMPACT SUMMARY
+// ============================================================================
+
+function ImpactSummary({
+  decisions,
+  onReset,
 }: {
-  label: string;
-  children: ReactNode;
+  decisions: Record<string, "approve" | "reject">;
+  onReset: () => void;
 }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-normal text-slate-500">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
+  const approved = issues.filter(i => decisions[i.id] === "approve");
+  const totalCR = approved.reduce((s, i) => s + i.impact.crLift, 0);
+  const totalRev = approved.reduce((s, i) => s + i.impact.revenueLift, 0);
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+  const crAnim = useCountUp(totalCR, 1600, totalCR);
+  const revAnim = useCountUp(totalRev, 1600, totalRev);
+
   return (
-    <div className="grid grid-cols-[150px_1fr] gap-3">
-      <dt className="text-xs font-semibold uppercase tracking-normal text-slate-500">
-        {label}
-      </dt>
-      <dd className="font-semibold leading-6 text-slate-800">{value}</dd>
+    <div className="min-h-screen flex flex-col">
+      <header className="px-10 py-6 border-b border-ink/10 flex items-center justify-between">
+        <span className="font-mono text-xs uppercase tracking-[0.25em]">audit complete</span>
+        <span className="font-mono text-xs text-neutral-500">3 / 3 reviewed</span>
+      </header>
+
+      <main className="flex-1 px-10 py-12 flex flex-col">
+        <div className="max-w-5xl">
+          <div className="font-mono text-xs uppercase tracking-[0.3em] text-neutral-500 mb-6">
+            estimated production lift
+          </div>
+
+          <div className="grid grid-cols-2 gap-12 mb-12">
+            <div>
+              <div className="font-display text-8xl text-forest leading-none tabular-nums">+{crAnim.toFixed(1)}%</div>
+              <div className="font-mono text-xs uppercase tracking-[0.2em] text-neutral-500 mt-3">conversion rate</div>
+              <div className="font-mono text-xs text-neutral-500 mt-1">{store.currentCR}% → {(store.currentCR + totalCR).toFixed(1)}%</div>
+            </div>
+            <div>
+              <div className="font-display text-8xl text-ink leading-none tabular-nums">{fmtMoney(Math.round(revAnim))}</div>
+              <div className="font-mono text-xs uppercase tracking-[0.2em] text-neutral-500 mt-3">annual revenue lift</div>
+              <div className="font-mono text-xs text-neutral-500 mt-1">on current traffic · {(store.monthlyTraffic / 1000).toFixed(0)}k / mo</div>
+            </div>
+          </div>
+
+          <div className="border-t border-ink/10 pt-6 mb-10">
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 mb-4">decisions</div>
+            <div className="space-y-2">
+              {issues.map(issue => {
+                const d = decisions[issue.id];
+                return (
+                  <div key={issue.id} className="flex items-center gap-4 py-2 border-b border-ink/5 last:border-0">
+                    <span className={`font-mono text-xs uppercase tracking-[0.15em] w-20 ${d === "approve" ? "text-forest" : "text-coral"}`}>
+                      {d === "approve" ? "approved" : "rejected"}
+                    </span>
+                    <span className="font-body text-sm text-ink flex-1">{issue.title}</span>
+                    <span className="font-mono text-xs text-neutral-500 w-20 text-right">+{issue.impact.crLift}%</span>
+                    <span className={`font-mono text-xs w-24 text-right ${d === "approve" ? "text-forest" : "text-neutral-400 line-through"}`}>
+                      {fmtMoney(issue.impact.revenueLift)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button className="bg-ink text-paper px-8 py-4 font-mono text-sm uppercase tracking-[0.2em] hover:bg-amber hover:text-paper transition-colors">
+              Deploy to production
+            </button>
+            <button
+              onClick={onReset}
+              className="font-mono text-xs uppercase tracking-[0.2em] text-neutral-500 hover:text-ink transition-colors"
+            >
+              ↻ reset demo
+            </button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
 
-function Toast({ message }: { message: string }) {
+// ============================================================================
+// APP
+// ============================================================================
+
+type Screen = "landing" | "analysis" | "report" | "fix" | "summary";
+
+export default function App() {
+  const [screen, setScreen] = useState<Screen>("landing");
+  const [currentFixIndex, setCurrentFixIndex] = useState(0);
+  const [decisions, setDecisions] = useState<Record<string, "approve" | "reject">>({});
+
+  const startAnalysis = useCallback(() => setScreen("analysis"), []);
+  const analysisComplete = useCallback(() => setScreen("report"), []);
+
+  const openFix = useCallback((id: string) => {
+    const idx = issues.findIndex(i => i.id === id);
+    if (idx === -1) return;
+    setCurrentFixIndex(idx);
+    setScreen("fix");
+  }, []);
+
+  const decideFix = useCallback((decision: "approve" | "reject") => {
+    const current = issues[currentFixIndex];
+    const newDecisions = { ...decisions, [current.id]: decision };
+    setDecisions(newDecisions);
+
+    const nextUndecided = issues.findIndex((iss, idx) => idx > currentFixIndex && !newDecisions[iss.id]);
+    if (nextUndecided !== -1) {
+      setCurrentFixIndex(nextUndecided);
+    } else {
+      const anyUndecided = issues.findIndex(iss => !newDecisions[iss.id]);
+      if (anyUndecided !== -1) {
+        setCurrentFixIndex(anyUndecided);
+      } else {
+        setScreen("summary");
+      }
+    }
+  }, [currentFixIndex, decisions]);
+
+  const reset = useCallback(() => {
+    setScreen("landing");
+    setCurrentFixIndex(0);
+    setDecisions({});
+  }, []);
+
   return (
-    <div
-      className={[
-        "fixed bottom-6 right-6 z-20 flex items-center gap-3 rounded-lg border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-xl transition",
-        message
-          ? "translate-y-0 opacity-100"
-          : "pointer-events-none translate-y-3 opacity-0",
-      ].join(" ")}
-      role="status"
-      aria-live="polite"
-    >
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-        <Check size={16} />
-      </span>
-      {message}
+    <div className="bg-paper text-ink font-body antialiased">
+      {screen === "landing" && <LandingScreen onStart={startAnalysis} />}
+      {screen === "analysis" && <AnalysisScreen onComplete={analysisComplete} />}
+      {screen === "report" && <AuditReportScreen onOpenFix={openFix} />}
+      {screen === "fix" && (
+        <FixScreen
+          issue={issues[currentFixIndex]}
+          index={currentFixIndex + 1}
+          total={issues.length}
+          onDecide={decideFix}
+        />
+      )}
+      {screen === "summary" && <ImpactSummary decisions={decisions} onReset={reset} />}
+
+      {screen !== "landing" && screen !== "summary" && (
+        <button
+          onClick={reset}
+          className="fixed bottom-6 right-6 font-mono text-xs uppercase tracking-[0.2em] text-neutral-400 hover:text-ink transition-colors bg-paper border border-ink/15 px-3 py-2"
+        >
+          ↻ reset
+        </button>
+      )}
     </div>
   );
 }
-
-export default App;
