@@ -13,8 +13,9 @@ const store = {
   skuCount: 47,
   monthlyTraffic: 84000,
   currentCR: 1.8,
-  monthlyRevenue: 127000,
-  verticalBenchmarks: { median: 1.6, topQuartile: 2.4, topDecile: 2.9 },
+  aov: 300,
+  monthlyRevenue: 453600,
+  verticalBenchmarks: { median: 1.8, topQuartile: 2.5, topDecile: 3.0 },
 };
 
 type Thought = { at: number; text: string };
@@ -160,13 +161,13 @@ const audit = {
     ],
   },
   narrative:
-    "ErgoFlex sits at the furniture vertical median (1.8% CR vs 1.6% median). Top quartile reaches 2.4%; furniture giants Wayfair/Overstock hit 2.9–3.1%. The proposed fix stack lifts the store from median toward top quartile — meaningful but bounded by vertical ceiling. Three catalog gaps map directly to competitor traffic. The top-performing PDP misses 3 of 5 trust signals standard for the vertical. The highest-spend ad creative pulls audiences with a pain-relief promise the hero never honors. Top-performing SKUs are buried below fold on the homepage.",
+    "ErgoFlex sits at the furniture vertical median (1.8% CR — ECDB 2024). Top quartile reaches ~2.5%; the CRO ceiling in furniture hovers near 3% (Wayfair itself runs 1.5–2.0% US currently per Grips Intelligence). The proposed fix stack lifts the store from median toward top quartile — meaningful but bounded by vertical reality. Three catalog gaps map directly to competitor traffic. The top-performing PDP misses 3 of 5 trust signals standard for the vertical. The highest-spend ad creative pulls audiences with a pain-relief promise the hero never honors. Top-performing SKUs are buried below fold on the homepage.",
   estimatedBlendedLift: {
-    crLiftRelative: 30,
-    crAbsoluteAfter: 2.33,
-    revenueLiftFromCR: 285000,
+    crLiftRelative: 26,
+    crAbsoluteAfter: 2.26,
+    revenueLiftFromCR: 1400000,
     revenueLiftFromCatalog: 120000,
-    revenue: 405000,
+    revenue: 1520000,
   },
 };
 
@@ -191,6 +192,7 @@ type Issue = {
   title: string;
   reasoning: string;
   impact: {
+    kind: "cr" | "tam";
     crLift: number;
     revenueLift: number;
     confidence: "high" | "medium-high" | "medium";
@@ -212,8 +214,9 @@ const issues: Issue[] = [
     reasoning:
       "Ad audience clicks expecting health framing. Hero pivots to luxury framing. Cognitive mismatch drives bounce. $18.5k/mo ad spend pulls 412k impressions; conservative 30% mismatch-bounce ≈ $5.5k wasted monthly.",
     impact: {
+      kind: "cr",
       crLift: 13,
-      revenueLift: 155000,
+      revenueLift: 708000,
       confidence: "medium-high",
       breakdown: [
         { source: "Message-match restoration", value: 8.0 },
@@ -256,6 +259,7 @@ const issues: Issue[] = [
     reasoning:
       "Market analysis identified 3 product gaps with strong demand signals and existing customer co-purchase patterns. Each gap maps to traffic currently flowing to competitors. Launching these SKUs creates net-new TAM plus cross-sell paths on existing traffic.",
     impact: {
+      kind: "tam",
       crLift: 3,
       revenueLift: 120000,
       confidence: "medium-high",
@@ -376,8 +380,9 @@ const issues: Issue[] = [
     reasoning:
       "Furniture buyers face high purchase anxiety: large ticket, can't physically test, assembly uncertainty. Industry benchmark uses 5 trust signals (warranty, return, assembly, shipping, payment). ErgoFlex shows 2/5.",
     impact: {
+      kind: "cr",
       crLift: 7,
-      revenueLift: 85000,
+      revenueLift: 381000,
       confidence: "high",
       breakdown: [
         { source: "Warranty anxiety resolution", value: 2.7 },
@@ -441,8 +446,9 @@ const issues: Issue[] = [
     reasoning:
       "Top performers buried below fold. 14 dead-stock SKUs (zero sales / 60d) consume navigation attention. Visitor lands on slow-movers first, bounces before reaching converters.",
     impact: {
+      kind: "cr",
       crLift: 4,
-      revenueLift: 45000,
+      revenueLift: 218000,
       confidence: "high",
       breakdown: [
         { source: "Top-performer surface lift", value: 2.2 },
@@ -2071,8 +2077,9 @@ function ImpactSummary({
 }) {
   const approved = issues.filter(i => decisions[i.id] === "approve");
 
-  // Compound aggregation — multiplicative, accounts for diminishing returns
-  const compoundedMultiplier = approved.reduce((m, i) => m * (1 + i.impact.crLift / 100), 1);
+  // CR fixes compound multiplicatively; TAM fixes (catalog expansion) sit outside the CR compound.
+  const crApproved = approved.filter(i => i.impact.kind === "cr");
+  const compoundedMultiplier = crApproved.reduce((m, i) => m * (1 + i.impact.crLift / 100), 1);
   const newCR = store.currentCR * compoundedMultiplier;
   const relativeLift = (compoundedMultiplier - 1) * 100;
   const totalRev = approved.reduce((s, i) => s + i.impact.revenueLift, 0);

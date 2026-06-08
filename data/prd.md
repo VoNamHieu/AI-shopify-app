@@ -113,40 +113,51 @@ The CR lift predictions surfaced by `store_auditor` are bounded by what the vert
 
 | Vertical | Typical CR | Source |
 |----------|-----------|--------|
-| Food & beverage | 4.9% | ECDB 2024 |
-| Health & beauty | 3.1% | IRP 2024 |
+| Food & beverage | 5.5% | Dynamic Yield 2024 |
+| Health & beauty | 4.2% | Dynamic Yield 2024 |
 | Apparel | 2.4% | Dynamic Yield 2024 |
 | Electronics | 1.8% | IRP 2024 |
-| **Home & furniture** | **1.2–1.8%** | ECDB 2024 — *lowest major vertical* |
-| Luxury | 0.85% | IRP 2025 |
+| **Home & furniture** | **1.8%** | ECDB 2024 — *lowest major vertical* |
+| Luxury | 0.85% | Dynamic Yield 2025 |
 
 Realistic CRO lift expectations: **20–40% relative over 6 months** for a store sitting at the vertical median. Higher lifts are possible but require structural changes (pricing, supply, brand) outside what a diagnostic audit can recommend.
 
 ### Vertical ceiling reality check
 
-Wayfair runs at **2.9%**. Overstock at **3.1%**. These are the furniture giants — they have the SKU breadth, the trust history, the supply chain leverage, and the dedicated CRO teams. Any tool claiming to lift a furniture store to 5%+ is signaling it does not understand the vertical.
+Older benchmark posts cite Wayfair at ~2.9% and Overstock at ~3.1%. Those numbers are stale and recycled. Current data (Grips Intelligence, April 2026) puts wayfair.com at **1.5–2.0%** — converging with the vertical median. Overstock no longer operates as a standalone storefront.
 
-`store_auditor` predictions are bounded by this reality. A median furniture store (1.6% CR) can credibly reach the top quartile (2.4%) with a strong fix stack. Hitting Wayfair-tier (2.9%) requires structural advantages beyond CRO.
+The implication: dedicated CRO teams at category leaders do not produce structural CR advantages over the vertical median in furniture. The CRO ceiling sits closer to **~2.5% (top quartile)** than the often-cited 3%+.
+
+`store_auditor` predictions are bounded by this reality. A median furniture store (1.8% CR) can credibly approach top quartile (~2.5%) with a strong fix stack. Sustained 3%+ requires structural advantages — supply, pricing, brand — beyond what CRO alone delivers.
 
 ## Demo scope · realistic numbers
 
-The ErgoFlex demo is calibrated against the vertical ceiling. Baseline: **1.8% CR, 84k monthly traffic**.
+The ErgoFlex demo is calibrated against the vertical ceiling. Baseline:
 
-| Fix | Relative CR lift | Revenue lift |
-|-----|------------------|--------------|
-| Ad ↔ Page coherence | +13% rel. | $155k/yr |
-| Trust signals on PDP | +7% rel. | $85k/yr |
-| Homepage restructure | +4% rel. | $45k/yr |
-| Catalog expansion | +3% rel. | $120k/yr |
+- **CR:** 1.8% (matches ECDB US furniture median)
+- **Traffic:** 84k monthly visits
+- **AOV:** $300 (mid-tier ergonomic furniture, consistent with $180–$520 category band)
+- **Baseline revenue:** ~$454k/mo · ~$5.44M/yr
 
-Per-fix lifts are **relative** percentages, not absolute percentage points. They compound multiplicatively in the impact summary — `(1 + L₁) × (1 + L₂) × …` — so two stacked fixes of +10% each yield +21%, not +20%. This is the correct treatment for sequential CR improvements.
+Per-fix lifts on CR fixes derive revenue from `traffic × baseline CR × relative lift × AOV × 12`. Catalog expansion is modeled separately as TAM expansion (orders the existing funnel cannot produce).
+
+| Fix | Lift type | Annual revenue lift |
+|-----|-----------|---------------------|
+| Ad ↔ Page coherence | +13% rel. CR | $708k |
+| Trust signals on PDP | +7% rel. CR | $381k |
+| Homepage restructure | +4% rel. CR | $218k |
+| Catalog expansion | TAM (net-new orders) | $120k |
+
+Per-fix CR lifts are **relative** percentages, not absolute percentage points. They compound multiplicatively in the impact summary — `(1 + L₁) × (1 + L₂) × …` — so two stacked fixes of +10% each yield +21%, not +20%. This is the correct treatment for sequential CR improvements.
+
+Catalog expansion does not lift CR on existing traffic — it adds new SKUs that capture demand currently flowing to competitors. Tracked as TAM, not folded into the CR compound.
 
 ### Blended outcome
 
-Compounded across the four fixes: `1.13 × 1.03 × 1.07 × 1.04 = 1.297`.
+Compounded across the three CR fixes: `1.13 × 1.07 × 1.04 = 1.2575`.
 
-- **1.8% → ~2.33% absolute CR**
-- **+30% relative lift**
-- **$405k/yr total revenue impact** ($285k from CR + $120k from catalog TAM)
+- **1.8% → ~2.26% absolute CR**
+- **+25.7% relative lift (CR side)**
+- **$1.40M/yr from CR fixes + $120k/yr from catalog TAM = ~$1.52M/yr total revenue impact**
 
-Moves the store from the vertical median to approaching the top quartile. Wayfair-tier 2.9% remains aspirational and is not promised by the audit.
+Moves the store from the vertical median (1.8%) toward the top quartile (~2.5%). Top-decile territory (3%+) remains aspirational and is not promised by the audit.
