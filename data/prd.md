@@ -14,79 +14,19 @@ The work itself is mostly diagnostic — heuristic checks against a known playbo
 - Frontier-model agents are now reliable enough to produce a prioritized, defensible fix list — not just generic advice.
 - Merchant willingness to pay for "CRO-as-a-button" is validated by recent traction in tools like Triple Whale and Lifesight.
 
+## Market trends (2026)
+
+**1. Shopify AI-native push.** Shopify Winter '26 Edition shipped Sidekick Pulse, theme editing via conversation, Flow automation from natural language, and the Dev MCP Server. Shopify is collapsing third-party tooling into platform-native features. Apps that compete on generic capabilities will be displaced; apps with specialized vertical or cross-channel depth survive.
+
+**2. Generative Engine Optimization (GEO).** Emerging category — optimizing Shopify stores for AI shopping agents (ChatGPT, Perplexity, Google AI Mode) rather than human visitors. Early data: stores optimized for agentic discovery show 28% higher conversion from AI-driven traffic. Adjacent opportunity for `store_auditor`'s roadmap (post v0.4).
+
+**3. CRO buyer AI-fatigue.** Counter-current. Operators burned by checklist-template AI tools are returning to human audits or demanding demonstrable depth. Implication: tagline "AI agent" alone is insufficient; must be paired with verifiable specialization.
+
 ## Target user
 
 Primary persona: **operator-led DTC brand**, 5–25 employees, $50k–$500k MRR, no in-house CRO specialist. The buyer is usually the founder or head of growth. They run paid acquisition, they know their numbers, and they suspect they are leaving money on the table — but cannot articulate exactly where.
 
 Secondary persona: agencies offering CRO as a service. `store_auditor` becomes a first-pass diagnostic that frees their consultants to focus on implementation rather than discovery.
-
-## Solution
-
-A diagnostic-only audit product. Five specialist agents analyze a connected Shopify store in parallel and produce a ranked list of fixes with predicted CR lift and revenue impact per fix.
-
-The audit is the wedge. Implementation (writing the new hero copy, adding the trust block, archiving SKUs) is handled by the merchant — or by a future paid implementation tier.
-
-### Agent architecture
-
-The audit runs across three layers. Each layer's output feeds the next.
-
-| Layer | Agents | Output |
-|-------|--------|--------|
-| `01 / research` | Market Research | Competitive landscape, price band, demand trends |
-| `02 / strategy` | Catalog Strategy | Gap analysis, expansion candidates |
-| `03 / optimization` | Page Opt · Trust Signals · Ad↔Page Coherence | Tactical fixes on the current store surface |
-
-Layer 1 and 2 run sequentially (strategy depends on market context). Layer 3 runs in parallel across three agents (independent surfaces).
-
-### Output
-
-Each fix surfaces with:
-- **Severity** — critical, high, medium
-- **Predicted CR lift** — a range, with contributing drivers expressed as share-of-lift (not spurious decimal points)
-- **Revenue impact** — annualized range, based on current traffic and AOV
-- **Before / after** — concrete change to ship, not generic advice
-- **Refinements** — three alternative phrasings the merchant can pivot to with one click
-
-## Pricing
-
-| Tier | Price | Includes |
-|------|-------|----------|
-| Audit | $49 one-time | Single full audit, all 5 agents, exportable PDF |
-| Starter | $29 / mo | Quarterly re-audit, single store, fix changelog |
-| Growth | $59 / mo | Monthly re-audit, trend tracking, fix changelog |
-| Implementation | $149 / mo | Audit + automated implementation of approved fixes via Shopify API |
-
-The $49 wedge undercuts the cheapest agency engagement by ~99% while still feeling priced like a real product (not a freemium toy).
-
-### Unit economics
-
-- COGS per audit ≈ $4 (model inference, Shopify API calls, storage)
-- Gross margin on audit tier: ~92%
-- Gross margin on starter tier: ~86% (quarterly re-runs)
-- Gross margin on growth tier: ~80% (monthly re-runs)
-- Implementation tier margin TBD — depends on action complexity
-
-## Roadmap
-
-### v0.1 — current
-- 5 agents, diagnostic only
-- Manual approval flow for each fix
-- Demo store (ErgoFlex) hardcoded
-
-### v0.2 — connect real stores
-- Shopify OAuth + read scopes
-- Real catalog, real traffic, real ad spend
-- Persistence: audit history per store
-
-### v0.3 — implementation tier
-- Write scopes for theme + product catalog
-- One-click apply for hero copy, trust blocks, homepage ordering
-- Rollback per fix
-
-### v0.4 — multi-channel
-- Pull Klaviyo flow data into ad↔page coherence checks
-- Pull Meta + Google ad creatives via official APIs
-- Replace placeholder ad-creative analysis with live data
 
 ## Competitive landscape & market positioning
 
@@ -125,13 +65,32 @@ CRO Media, TheGenieLab, and similar agencies are actively positioning **against*
 
 Signal: AI-fatigue forming in the CRO buyer segment, driven by sloppy AI checklist tools. "AI-powered" alone is no longer differentiation — may be a negative signal for experienced operators.
 
-## Market trends (2026)
+## Solution
 
-**1. Shopify AI-native push.** Shopify Winter '26 Edition shipped Sidekick Pulse, theme editing via conversation, Flow automation from natural language, and the Dev MCP Server. Shopify is collapsing third-party tooling into platform-native features. Apps that compete on generic capabilities will be displaced; apps with specialized vertical or cross-channel depth survive.
+A diagnostic-only audit product. Five specialist agents analyze a connected Shopify store in parallel and produce a ranked list of fixes with predicted CR lift and revenue impact per fix.
 
-**2. Generative Engine Optimization (GEO).** Emerging category — optimizing Shopify stores for AI shopping agents (ChatGPT, Perplexity, Google AI Mode) rather than human visitors. Early data: stores optimized for agentic discovery show 28% higher conversion from AI-driven traffic. Adjacent opportunity for `store_auditor`'s roadmap (post v0.4).
+The audit is the wedge. Implementation (writing the new hero copy, adding the trust block, archiving SKUs) is handled by the merchant — or by a future paid implementation tier.
 
-**3. CRO buyer AI-fatigue.** Counter-current. Operators burned by checklist-template AI tools are returning to human audits or demanding demonstrable depth. Implication: tagline "AI agent" alone is insufficient; must be paired with verifiable specialization.
+### Agent architecture
+
+The audit runs across three layers. Each layer's output feeds the next.
+
+| Layer | Agents | Output |
+|-------|--------|--------|
+| `01 / research` | Market Research | Competitive landscape, price band, demand trends |
+| `02 / strategy` | Catalog Strategy | Gap analysis, expansion candidates |
+| `03 / optimization` | Page Opt · Trust Signals · Ad↔Page Coherence | Tactical fixes on the current store surface |
+
+Layer 1 and 2 run sequentially (strategy depends on market context). Layer 3 runs in parallel across three agents (independent surfaces).
+
+### Output
+
+Each fix surfaces with:
+- **Severity** — critical, high, medium
+- **Predicted CR lift** — a range, with contributing drivers expressed as share-of-lift (not spurious decimal points)
+- **Revenue impact** — annualized range, based on current traffic and AOV
+- **Before / after** — concrete change to ship, not generic advice
+- **Refinements** — three alternative phrasings the merchant can pivot to with one click
 
 ## store_auditor differentiators
 
@@ -158,25 +117,6 @@ What competitors do NOT cover (validated against the current landscape):
 **3. Cross-platform expansion question.** Shopify TAM now has native AI competition; WooCommerce / BigCommerce / Magento (~8M combined merchants) have no native AI CRO equivalent. Sequencing question for the roadmap: Shopify-first validation, then expand to non-Shopify where the wedge is uncontested.
 
 **4. Claim discipline.** The distinction between "agent architecture" and "demonstrable autonomous research" must be tightened before launch. Marketing claim must match v0.1 behavior, with an explicit roadmap for v0.4 when external connectors (Meta Ads Library, Shopify Analytics API, competitor crawl) enable real autonomous research.
-
-## Risks
-
-- **Model drift on CR predictions.** Predicted lift is the most defensible claim in the product. If predictions miss reality by more than 30% on average, merchants will churn. Mitigation: backtest predictions against approved fixes, publish accuracy bands.
-- **Shopify API rate limits.** Full audit makes ~80 API calls. Bulk audit operations across an agency's portfolio could hit limits. Mitigation: batch + cache aggressively.
-- **Race against Shopify-native tooling.** If Shopify ships a first-party "Magic CRO" agent, our wedge erodes. Mitigation: ship faster, focus on multi-channel signals Shopify cannot see.
-
-## Success metrics
-
-- **Activation:** % of signups that complete a first audit (target: 80%+)
-- **Approval rate:** average % of recommended fixes a merchant approves (target: 40%+)
-- **Prediction accuracy:** rolling 90-day MAPE on CR lift predictions (target: <25%)
-- **Revenue retention:** monthly gross dollar retention on growth tier (target: >95%)
-
-## Open questions
-
-1. Should the implementation tier be opt-in per-fix or auto-apply with rollback?
-2. Do we expose agent thought streams in the final product, or is the analysis screen demo-only?
-3. How much of the audit narrative should be model-generated vs templated? Templated is cheaper and more consistent; generated is more compelling.
 
 ## Research foundations
 
@@ -236,3 +176,63 @@ Taking midpoint values for the three CR fixes (~+13%, ~+7%, ~+4%), the compound 
 - **~$315k/yr from CR fixes + ~$120k/yr from catalog TAM = ~$400–500k/yr total revenue opportunity**
 
 Range reflects which end of each fix's predicted lift band the store realises in practice. The bottom of the range (+20% relative compound) lands the store at ~2.2% CR; the top (+30%+) gets it near top quartile ~2.5%. Top-decile territory (3%+) remains aspirational and is not promised by the audit.
+
+## Pricing
+
+| Tier | Price | Includes |
+|------|-------|----------|
+| Audit | $49 one-time | Single full audit, all 5 agents, exportable PDF |
+| Starter | $29 / mo | Quarterly re-audit, single store, fix changelog |
+| Growth | $59 / mo | Monthly re-audit, trend tracking, fix changelog |
+| Implementation | $149 / mo | Audit + automated implementation of approved fixes via Shopify API |
+
+The $49 wedge undercuts the cheapest agency engagement by ~99% while still feeling priced like a real product (not a freemium toy).
+
+### Unit economics
+
+- COGS per audit ≈ $4 (model inference, Shopify API calls, storage)
+- Gross margin on audit tier: ~92%
+- Gross margin on starter tier: ~86% (quarterly re-runs)
+- Gross margin on growth tier: ~80% (monthly re-runs)
+- Implementation tier margin TBD — depends on action complexity
+
+## Roadmap
+
+### v0.1 — current
+- 5 agents, diagnostic only
+- Manual approval flow for each fix
+- Demo store (ErgoFlex) hardcoded
+
+### v0.2 — connect real stores
+- Shopify OAuth + read scopes
+- Real catalog, real traffic, real ad spend
+- Persistence: audit history per store
+
+### v0.3 — implementation tier
+- Write scopes for theme + product catalog
+- One-click apply for hero copy, trust blocks, homepage ordering
+- Rollback per fix
+
+### v0.4 — multi-channel
+- Pull Klaviyo flow data into ad↔page coherence checks
+- Pull Meta + Google ad creatives via official APIs
+- Replace placeholder ad-creative analysis with live data
+
+## Success metrics
+
+- **Activation:** % of signups that complete a first audit (target: 80%+)
+- **Approval rate:** average % of recommended fixes a merchant approves (target: 40%+)
+- **Prediction accuracy:** rolling 90-day MAPE on CR lift predictions (target: <25%)
+- **Revenue retention:** monthly gross dollar retention on growth tier (target: >95%)
+
+## Risks
+
+- **Model drift on CR predictions.** Predicted lift is the most defensible claim in the product. If predictions miss reality by more than 30% on average, merchants will churn. Mitigation: backtest predictions against approved fixes, publish accuracy bands.
+- **Shopify API rate limits.** Full audit makes ~80 API calls. Bulk audit operations across an agency's portfolio could hit limits. Mitigation: batch + cache aggressively.
+- **Race against Shopify-native tooling.** If Shopify ships a first-party "Magic CRO" agent, our wedge erodes. Mitigation: ship faster, focus on multi-channel signals Shopify cannot see.
+
+## Open questions
+
+1. Should the implementation tier be opt-in per-fix or auto-apply with rollback?
+2. Do we expose agent thought streams in the final product, or is the analysis screen demo-only?
+3. How much of the audit narrative should be model-generated vs templated? Templated is cheaper and more consistent; generated is more compelling.
