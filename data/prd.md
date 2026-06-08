@@ -86,6 +86,77 @@ The $99 wedge undercuts the cheapest agency engagement by ~99% while still feeli
 - Pull Meta + Google ad creatives via official APIs
 - Replace placeholder ad-creative analysis with live data
 
+## Competitive landscape & market positioning
+
+### Direct competitors (Shopify CRO audit category)
+
+**CRO Guru — Launch Check** (closest match)
+- Developer: ConversionAB · Pricing: $199 one-time
+- Tech: ChatGPT-powered, generates checklist across landing → product → cart → checkout
+- Traction: launched Jan 2024, 1 review (5.0) after ~2 years on App Store
+- Read: category validation exists, but execution hasn't broken through
+
+**CRO Clinic** — AI-powered instant audit platform, automatic analysis without setup. Lower public visibility, limited differentiation surfaced.
+
+**Blyp** — AI-powered insights tailored to e-commerce, automatic conversion opportunity detection. Adjacent positioning.
+
+**SEO HERO** — AI SEO audit app, free plan available, "CRO Tool (coming soon)" on roadmap. Adjacent player moving into CRO.
+
+### Indirect competitors (testing / personalization platforms)
+
+VWO, Hotjar, Microsoft Clarity, Rebuy — full-stack experimentation and personalization tools. Different category: ongoing optimization with CRO team support, not point-in-time audit. Price points ($200–2000/mo) and operator requirements (analyst + dev team) place them out of reach for `store_auditor`'s $50k–500k MRR DTC target band.
+
+### Native threat: Shopify Sidekick + Sidekick Pulse
+
+Materialized faster than this PRD initially scoped:
+
+- Q1 2026: weekly active shops using Sidekick up 385% YoY
+- 42% of all Shopify merchants now use Sidekick + Magic combined (Shopify Q1 2026 earnings)
+- Winter '26 Edition shipped **Sidekick Pulse**: proactive recommendations surfaced on the Home dashboard ("Instead of wondering 'what should I test next?', Sidekick tells you")
+- Free, native data access, zero install friction
+
+Implication: generic "what should I optimize" suggestions are now table stakes from the platform itself. `store_auditor` cannot win on this layer — must compete one level deeper (vertical specialization, cross-channel synthesis, iteration UX).
+
+### Human CRO agencies (signal layer)
+
+CRO Media, TheGenieLab, and similar agencies are actively positioning **against** AI tools. Direct quote from a CRO Media customer testimonial: *"we are so fed up with the AI crap out there."* Tagline: *"Not a rushed AI-generated checklist, but sharp human-crafted audit."*
+
+Signal: AI-fatigue forming in the CRO buyer segment, driven by sloppy AI checklist tools. "AI-powered" alone is no longer differentiation — may be a negative signal for experienced operators.
+
+## Market trends (2026)
+
+**1. Shopify AI-native push.** Shopify Winter '26 Edition shipped Sidekick Pulse, theme editing via conversation, Flow automation from natural language, and the Dev MCP Server. Shopify is collapsing third-party tooling into platform-native features. Apps that compete on generic capabilities will be displaced; apps with specialized vertical or cross-channel depth survive.
+
+**2. Generative Engine Optimization (GEO).** Emerging category — optimizing Shopify stores for AI shopping agents (ChatGPT, Perplexity, Google AI Mode) rather than human visitors. Early data: stores optimized for agentic discovery show 28% higher conversion from AI-driven traffic. Adjacent opportunity for `store_auditor`'s roadmap (post v0.4).
+
+**3. CRO buyer AI-fatigue.** Counter-current. Operators burned by checklist-template AI tools are returning to human audits or demanding demonstrable depth. Implication: tagline "AI agent" alone is insufficient; must be paired with verifiable specialization.
+
+## store_auditor differentiators
+
+What competitors do NOT cover (validated against the current landscape):
+
+| Capability | CRO Guru | CRO Clinic | Sidekick | store_auditor |
+|---|---|---|---|---|
+| Vertical-calibrated benchmarks (furniture, apparel, beauty per category) | ❌ | ❌ | ❌ | ✓ |
+| Iterative refinement UX (chat-with-the-fix) | ❌ | ❌ | partial | ✓ |
+| Cross-channel synthesis (ad creative ↔ landing page coherence) | ❌ | ❌ | ❌ | ✓ (v0.4) |
+| Catalog gap analysis with competitor demand mapping | ❌ | ❌ | ❌ | ✓ (v0.4) |
+| Multi-agent specialist architecture with autonomous research | ❌ | ❌ | partial | ✓ (target) |
+| Native Shopify data access | ❌ | ❌ | ✓ | partial |
+| Free entry point | ❌ | ❌ | ✓ | TBD |
+
+**Core wedge**: `store_auditor` sits between checklist-AI tools (CRO Guru tier) and full CRO platforms (VWO tier). The differentiating axes are **vertical depth** + **iteration UX** + **cross-channel synthesis** — not "AI-powered" as a generic claim.
+
+## Strategic implications
+
+**1. Positioning shift.** Drop "AI-powered CRO" as headline tagline. Lead with specific capability ("Iterative CRO audits with vertical depth" or similar). "AI agent" architecture is an internal advantage, not an external marketing message.
+
+**2. Free tier necessity.** Sidekick is free + native. `store_auditor` needs a free tier for distribution leverage; the paid tier must offer demonstrable depth Sidekick cannot match (vertical calibration, cross-channel synthesis, iteration UX).
+
+**3. Cross-platform expansion question.** Shopify TAM now has native AI competition; WooCommerce / BigCommerce / Magento (~8M combined merchants) have no native AI CRO equivalent. Sequencing question for the roadmap: Shopify-first validation, then expand to non-Shopify where the wedge is uncontested.
+
+**4. Claim discipline.** The distinction between "agent architecture" and "demonstrable autonomous research" must be tightened before launch. Marketing claim must match v0.1 behavior, with an explicit roadmap for v0.4 when external connectors (Meta Ads Library, Shopify Analytics API, competitor crawl) enable real autonomous research.
+
 ## Risks
 
 - **Model drift on CR predictions.** Predicted lift is the most defensible claim in the product. If predictions miss reality by more than 30% on average, merchants will churn. Mitigation: backtest predictions against approved fixes, publish accuracy bands.
